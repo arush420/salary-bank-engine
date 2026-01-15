@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<h2>Bank Change Requests</h2>
+
+<table>
+<tr>
+  <th>Employee</th><th>New Account</th><th>IFSC</th><th>Action</th>
+</tr>
+{% for r in requests %}
+<tr>
+  <td>{{ r.employee.name }}</td>
+  <td>{{ r.new_account_number }}</td>
+  <td>{{ r.new_ifsc }}</td>
+  <td>
+    <a href="/bank/approve/{{ r.id }}/">Approve</a>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+</body>
+</html>

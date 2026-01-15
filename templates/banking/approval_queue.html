@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bank Change Approvals</title>
+</head>
+<body>
+
+<h2>Bank Change Requests</h2>
+
+<table border="1" cellpadding="10">
+<tr>
+    <th>Employee</th>
+    <th>New Bank</th>
+    <th>Account</th>
+    <th>IFSC</th>
+    <th>Effective Month</th>
+    <th>Action</th>
+</tr>
+
+{% for r in requests %}
+<tr>
+    <td>{{ r.employee.name }}</td>
+    <td>{{ r.new_bank_name }}</td>
+    <td>{{ r.new_account_number }}</td>
+    <td>{{ r.new_ifsc }}</td>
+    <td>{{ r.effective_from_month }}</td>
+    <td>
+        <a href="/bank/approve/{{ r.id }}/">Approve</a>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="6">No pending requests</td>
+</tr>
+{% endfor %}
+
+</table>
+
+</body>
+</html>
