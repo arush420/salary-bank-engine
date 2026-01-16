@@ -1,3 +1,4 @@
+from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.utils.timezone import now
 from django.db import transaction
@@ -122,3 +123,7 @@ def upload_bank_response(request):
         "banking/bank_response_upload.html",
         {"form": form}
     )
+
+
+def export_bank_file(request, month, year):
+    return HttpResponse(f"Bank export for {month}/{year}")
