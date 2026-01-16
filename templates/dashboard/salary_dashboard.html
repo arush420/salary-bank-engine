@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Salary Dashboard</title>
+    <style>
+        body { font-family: Arial; background: #f5f6fa; }
+        .container { max-width: 1000px; margin: auto; }
+        .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h2 { margin-bottom: 20px; }
+        .amount { font-size: 18px; font-weight: bold; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Salary Dashboard — {{ month }}/{{ year }}</h2>
+
+    {% if not stats %}
+        <p>No salary batch found.</p>
+    {% else %}
+
+    <div class="cards">
+        <div class="card">
+            <h3>Pending</h3>
+            <p>{{ stats.pending }}</p>
+        </div>
+
+        <div class="card">
+            <h3>On Hold</h3>
+            <p>{{ stats.hold }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Processed</h3>
+            <p>{{ stats.processed }}</p>
+        </div>
+
+        <div class="card">
+            <h3>Failed</h3>
+            <p>{{ stats.failed }}</p>
+        </div>
+    </div>
+
+    <br>
+
+    <div class="cards">
+        <div class="card">
+            <h3>Total Amount</h3>
+            <div class="amount">₹ {{ stats.total_amount }}</div>
+        </div>
+
+        <div class="card">
+            <h3>Processed Amount</h3>
+            <div class="amount">₹ {{ stats.processed_amount }}</div>
+        </div>
+
+        <div class="card">
+            <h3>Held Amount</h3>
+            <div class="amount">₹ {{ stats.hold_amount }}</div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+</body>
+</html>

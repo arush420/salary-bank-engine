@@ -30,8 +30,12 @@ class SalaryTransaction(models.Model):
     salary_amount = models.DecimalField(max_digits=10, decimal_places=2)
     account_number = models.CharField(max_length=30)
     ifsc = models.CharField(max_length=15)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
-    utr = models.CharField(max_length=100, null=True, blank=True)
 
-    class Meta:
-        unique_together = ("batch", "employee")
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="PENDING"
+    )
+
+    utr = models.CharField(max_length=100, null=True, blank=True)
+    bank_response_at = models.DateTimeField(null=True, blank=True)
