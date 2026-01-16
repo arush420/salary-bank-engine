@@ -1,3 +1,6 @@
+{% extends "base.html" %}
+{% block title %}{{ status }} Payroll {% endblock %}
+{% block content %}
 <h2>Upload Salary</h2>
 
 <form method="post" enctype="multipart/form-data">
@@ -5,3 +8,4 @@
   {{ form.as_p }}
   <button type="submit">Upload</button>
 </form>
+{% endblock %}
