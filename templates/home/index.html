@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Salary & Bank Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            padding: 40px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        p.subtitle {
+            text-align: center;
+            color: #555;
+            margin-bottom: 40px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+        }
+        .card a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .card span {
+            display: block;
+            margin-top: 8px;
+            color: #777;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Salary & Bank Management System</h1>
+    <p class="subtitle">Internal Payroll & Bank Processing Engine</p>
+
+    <div class="grid">
+        <div class="card">
+            <a href="/dashboard/">📊 Salary Dashboard</a>
+            <span>Monthly status & amounts</span>
+        </div>
+
+        <div class="card">
+            <a href="/salary/upload/">📥 Upload Salary</a>
+            <span>Excel / CSV upload</span>
+        </div>
+
+        <div class="card">
+            <a href="/bank/export/1/2026/">🏦 Bank Export</a>
+            <span>Generate bank file</span>
+        </div>
+
+        <div class="card">
+            <a href="/bank/response-upload/">🔁 Bank Response Upload</a>
+            <span>UTR reconciliation</span>
+        </div>
+
+        <div class="card">
+            <a href="/bank/approvals/">✅ Bank Approvals</a>
+            <span>Approve account changes</span>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
