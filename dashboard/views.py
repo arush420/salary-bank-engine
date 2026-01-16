@@ -1,26 +1,27 @@
+from datetime import date
 from django.shortcuts import render
+from django.db.models import Sum
 from payroll.models import SalaryBatch, SalaryTransaction
-from companies.models import Company
-from django.db.models import Count, Sum
 
 
 def salary_dashboard(request):
-    # Temporary defaults (can add dropdown later)
-    month = int(request.GET.get("month", 1))
-    year = int(request.GET.get("year", 2026))
+    today = date.today()
 
-    company = Company.objects.first()
+    month = int(request.GET.get("month", today.month))
+    year = int(request.GET.get("year", today.year))
 
     batch = SalaryBatch.objects.filter(
-        company=company,
         month=month,
         year=year
     ).first()
 
+    # Base context (always available)
     context = {
         "month": month,
         "year": year,
-        "stats": {},
+        "months": range(1, 13),
+        "years": range(today.year - 2, today.year + 3),
+        "batch": batch,
     }
 
     if not batch:
@@ -28,16 +29,14 @@ def salary_dashboard(request):
 
     qs = SalaryTransaction.objects.filter(batch=batch)
 
-    context["stats"] = {
-        "pending": qs.filter(status="PENDING").count(),
+    # Stats
+    context["stats"] = {"pending": qs.filter(status="PENDING").count(),
         "hold": qs.filter(status="HOLD").count(),
         "processed": qs.filter(status="PROCESSED").count(),
         "failed": qs.filter(status="FAILED").count(),
-
         "total_amount": qs.aggregate(
             total=Sum("salary_amount")
         )["total"] or 0,
-
         "processed_amount": qs.filter(
             status="PROCESSED"
         ).aggregate(total=Sum("salary_amount"))["total"] or 0,
@@ -48,3 +47,32 @@ def salary_dashboard(request):
     }
 
     return render(request, "dashboard/salary_dashboard.html", context)
+
+
+def salary_status_list(request, status):
+    month = int(request.GET.get("month"))
+    year = int(request.GET.get("year"))
+
+    batch = SalaryBatch.objects.filter(
+        month=month,
+        year=year
+    ).first()
+
+    transactions = []
+
+    if batch:
+        transactions = SalaryTransaction.objects.select_related(
+            "employee"
+        ).filter(
+            batch=batch,
+            status=status.upper()
+        )
+
+    context = {
+        "status": status.upper(),
+        "month": month,
+        "year": year,
+        "transactions": transactions,
+    }
+
+    return render(request, "dashboard/salary_status_list.html", context)

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Salary & Bank Engine{% endblock %}</title>
+
+    <style>
+        :root {
+            --bg: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-main: #222;
+            --text-muted: #666;
+            --accent: #2563eb;
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background: var(--bg);
+            color: var(--text-main);
+        }
+
+        /* Navbar */
+        .navbar {
+            background: white;
+            padding: 14px 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .navbar a {
+            text-decoration: none;
+            color: var(--text-main);
+            font-weight: 600;
+            margin-right: 20px;
+        }
+
+        .navbar a:hover {
+            color: var(--accent);
+        }
+
+        .nav-left {
+            display: flex;
+            align-items: center;
+        }
+
+        .brand {
+            font-weight: 700;
+            margin-right: 30px;
+        }
+
+        /* Layout */
+        .container {
+            max-width: 1100px;
+            margin: auto;
+            padding: 30px 20px;
+        }
+
+        /* Buttons */
+        button {
+            background: var(--accent);
+            border: none;
+            color: white;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+<!-- NAVBAR -->
+<div class="navbar">
+    <div class="nav-left">
+        <div class="brand">💼 Salary Engine</div>
+
+        <a href="{% url 'dashboard:salary_dashboard' %}">Dashboard</a>
+        <a href="{% url 'payroll:salary_upload' %}">Upload Salary</a>
+        <a href="{% url 'banking:bank_response_upload' %}">Bank Response</a>
+        <a href="{% url 'banking:approval_queue' %}">Approvals</a>
+    </div>
+</div>
+
+<!-- PAGE CONTENT -->
+<div class="container">
+    {% block content %}{% endblock %}
+</div>
+
+{% block extra_js %}{% endblock %}
+</body>
+</html>

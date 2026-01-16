@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}{{ status }} Salaries{% endblock %}
+{% block content %}
+
+<div class="container">
+
+    <a class="back" href="{% url 'dashboard:salary_dashboard' %}?month={{ month }}&year={{ year }}">
+        ← Back to Dashboard
+    </a>
+
+    <h2>{{ status }} Salaries — {{ month }}/{{ year }}</h2>
+
+    {% if transactions %}
+        <table>
+            <tr>
+                <th>Employee Code</th>
+                <th>Name</th>
+                <th>Amount</th>
+                <th>Account</th>
+                <th>UTR</th>
+            </tr>
+
+            {% for t in transactions %}
+            <tr>
+                <td>{{ t.employee.emp_code }}</td>
+                <td>{{ t.employee.name }}</td>
+                <td>{{ t.salary_amount }}</td>
+                <td>{{ t.account_number }}</td>
+                <td>{{ t.utr|default:"-" }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% else %}
+        <p>No records found.</p>
+    {% endif %}
+
+</div>
+
+{% endblock %}
