@@ -1,5 +1,6 @@
 from django import forms
-from .models import BankChangeRequest
+from banking.models import BankChangeRequest
+
 
 class BankChangeRequestForm(forms.ModelForm):
     class Meta:

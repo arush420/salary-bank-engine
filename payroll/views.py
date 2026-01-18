@@ -1,11 +1,15 @@
 import csv
 import io
+
+import openpyxl
 import pandas as pd
 from django.shortcuts import render, redirect
+
+from banking.models import EmployeeBankAccount
 from .models import SalaryBatch, SalaryTransaction
 from .forms import SalaryUploadForm
 from companies.models import Company
-from employees.models import Employee, EmployeeBankAccount
+from employees.models import Employee
 
 def upload_salary(request):
     if request.method == "POST":

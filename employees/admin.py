@@ -1,6 +1,4 @@
 from django.contrib import admin
-from .models import Employee, EmployeeBankAccount, BankChangeRequest
+from .models import Employee
 
 admin.site.register(Employee)
-admin.site.register(EmployeeBankAccount)
-admin.site.register(BankChangeRequest)

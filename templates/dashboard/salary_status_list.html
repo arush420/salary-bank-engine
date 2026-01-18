@@ -1,39 +1,42 @@
 {% extends "base.html" %}
 {% block title %}{{ status }} Salaries{% endblock %}
+
 {% block content %}
 
-<div class="container">
+<a class="back" href="{% url 'dashboard:salary_dashboard' %}?month={{ month }}&year={{ year }}">
+    ← Back to Dashboard
+</a>
 
-    <a class="back" href="{% url 'dashboard:salary_dashboard' %}?month={{ month }}&year={{ year }}">
-        ← Back to Dashboard
-    </a>
+<h2>{{ status }} Salaries — {{ month }}/{{ year }}</h2>
 
-    <h2>{{ status }} Salaries — {{ month }}/{{ year }}</h2>
+{% if transactions %}
+<table style="width:100%; background:white; border-collapse:collapse; margin-top:20px;">
+    <tr style="background:#f0f0f0;">
+        <th>Employee Code</th>
+        <th>Name</th>
+        <th>Amount</th>
+        <th>Account</th>
+        <th>UTR</th>
+    </tr>
 
-    {% if transactions %}
-        <table>
-            <tr>
-                <th>Employee Code</th>
-                <th>Name</th>
-                <th>Amount</th>
-                <th>Account</th>
-                <th>UTR</th>
-            </tr>
+    {% for t in transactions %}
+    <tr style="border-bottom:1px solid #ddd;">
+        <td>{{ t.employee.emp_code }}</td>
 
-            {% for t in transactions %}
-            <tr>
-                <td>{{ t.employee.emp_code }}</td>
-                <td>{{ t.employee.name }}</td>
-                <td>{{ t.salary_amount }}</td>
-                <td>{{ t.account_number }}</td>
-                <td>{{ t.utr|default:"-" }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-    {% else %}
-        <p>No records found.</p>
-    {% endif %}
+        <td>
+            <a href="{% url 'dashboard:employee_salary_ledger' t.employee.id %}">
+                {{ t.employee.name }}
+            </a>
+        </td>
 
-</div>
+        <td>{{ t.salary_amount }}</td>
+        <td>{{ t.account_number }}</td>
+        <td>{{ t.utr|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No records found.</p>
+{% endif %}
 
 {% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Employees{% endblock %}
+
+{% block content %}
+<h2>Employees</h2>
+
+<table style="width:100%; background:white; border-collapse:collapse; margin-top:20px;">
+    <tr style="background:#f0f0f0;">
+        <th>Emp Code</th>
+        <th>Name</th>
+        <th>Status</th>
+        <th>Profile</th>
+    </tr>
+
+    {% for e in employees %}
+    <tr style="border-bottom:1px solid #ddd;">
+        <td>{{ e.emp_code }}</td>
+        <td>{{ e.name }}</td>
+        <td>{{ e.is_active|yesno:"Active,Left" }}</td>
+        <td>
+            <a href="{% url 'employees:employee_profile' e.id %}">
+                View
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

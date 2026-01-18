@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}{{ employee.name }}{% endblock %}
+
+{% block content %}
+
+<a href="{% url 'employees:employee_list' %}">← Back to Employees</a>
+
+<h2>{{ employee.name }} ({{ employee.emp_code }})</h2>
+
+<p><strong>Status:</strong> {{ employee.is_active|yesno:"Active,Left" }}</p>
+<p><strong>Joining Date:</strong> {{ employee.join_date }}</p>
+
+{% if employee.exit_date %}
+<p><strong>Exit Date:</strong> {{ employee.exit_date }}</p>
+{% endif %}
+
+<hr>
+
+<h3>Salary</h3>
+
+{% if latest_salary %}
+    <p>
+        Last Salary:
+        ₹ {{ latest_salary.salary_amount }}
+        ({{ latest_salary.batch.month }}/{{ latest_salary.batch.year }})
+    </p>
+
+    <a href="{% url 'dashboard:employee_salary_ledger' employee.id %}">
+        View Full Salary Ledger
+    </a>
+{% else %}
+    <p>No salary records found.</p>
+{% endif %}
+<hr>
+
+<h3>Bank Accounts</h3>
+
+{% if active_account %}
+<div style="background:#ecfeff; padding:15px; border-radius:8px; margin-bottom:20px;">
+    <strong>Current Active Account</strong><br>
+    {{ active_account.bank_name }}<br>
+    A/C: {{ active_account.account_number }}<br>
+    IFSC: {{ active_account.ifsc }}<br>
+    <small>
+        Approved by {{ active_account.approved_by }}
+        on {{ active_account.approved_at|date:"d M Y" }}
+    </small>
+</div>
+{% else %}
+<p>No active bank account.</p>
+{% endif %}
+
+{% if bank_accounts %}
+<table style="width:100%; background:white; border-collapse:collapse;">
+    <tr style="background:#f0f0f0;">
+        <th>Bank</th>
+        <th>Account</th>
+        <th>IFSC</th>
+        <th>Status</th>
+        <th>Approved By</th>
+        <th>Approved At</th>
+    </tr>
+
+    {% for acc in bank_accounts %}
+    <tr style="border-bottom:1px solid #ddd;">
+        <td>{{ acc.bank_name }}</td>
+        <td>{{ acc.account_number }}</td>
+        <td>{{ acc.ifsc }}</td>
+        <td>
+            {% if acc.is_active %}
+                <strong style="color:green;">Active</strong>
+            {% else %}
+                Inactive
+            {% endif %}
+        </td>
+        <td>{{ acc.approved_by|default:"—" }}</td>
+        <td>{{ acc.approved_at|date:"d M Y"|default:"—" }}</td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No bank history found.</p>
+{% endif %}
+
+{% endblock %}

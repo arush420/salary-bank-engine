@@ -5,10 +5,11 @@ from django.db import transaction
 
 import pandas as pd
 
-from employees.models import BankChangeRequest, EmployeeBankAccount
 from payroll.models import SalaryBatch, SalaryTransaction
 from companies.models import Company
 from .forms import BankResponseUploadForm
+from .models import BankChangeRequest
+from banking.models import EmployeeBankAccount
 
 
 # ---------------------------

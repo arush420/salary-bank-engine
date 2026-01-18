@@ -1,6 +1,10 @@
 from datetime import date
 from django.shortcuts import render
 from django.db.models import Sum
+from django.db import models
+
+from employees.models import Employee
+from payroll import models
 from payroll.models import SalaryBatch, SalaryTransaction
 
 
@@ -76,3 +80,52 @@ def salary_status_list(request, status):
     }
 
     return render(request, "dashboard/salary_status_list.html", context)
+
+
+
+def employee_salary_ledger(request, employee_id):
+    employee = Employee.objects.get(id=employee_id)
+
+    transactions = SalaryTransaction.objects.filter(
+        employee=employee
+    ).select_related(
+        "batch"
+    ).order_by(
+        "-batch__year", "-batch__month"
+    )
+
+    totals = transactions.aggregate(
+        total_amount=Sum("salary_amount"),
+        processed_amount=Sum(
+            "salary_amount",
+            filter=models.Q(status="PROCESSED")
+        ),
+        pending_amount=Sum(
+            "salary_amount",
+            filter=models.Q(status="PENDING")
+        ),
+        hold_amount=Sum(
+            "salary_amount",
+            filter=models.Q(status="HOLD")
+        ),
+        failed_amount=Sum(
+            "salary_amount",
+            filter=models.Q(status="FAILED")
+        ),
+    )
+
+    # Replace None with 0
+    totals = {k: v or 0 for k, v in totals.items()}
+
+    context = {
+        "employee": employee,
+        "transactions": transactions,
+        "totals": totals,
+    }
+
+    return render(
+        request,
+        "dashboard/employee_salary_ledger.html",
+        context
+    )
+
