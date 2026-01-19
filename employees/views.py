@@ -9,21 +9,22 @@ from banking.models import EmployeeBankAccount, BankChangeRequest
 
 
 # @login_required
-def request_bank_change(request):
-    employee = Employee.objects.first()
-
+def request_bank_change(request, employee_id):
     if request.method == "POST":
         form = BankChangeRequestForm(request.POST)
         if form.is_valid():
-            obj = form.save(commit=False)
-            obj.employee = employee
-            obj.submitted_by = request.user
-            obj.save()
-            return redirect("bank_request_success")
+            req = form.save(commit=False)
+            req.employee_id = employee_id
+            req.save()
+            return redirect("employees:employee_profile", employee_id=employee_id)
     else:
         form = BankChangeRequestForm()
 
-    return render(request, "employees/bank_request.html", {"form": form})
+    return render(
+        request,
+        "employees/request_bank_change.html",
+        {"form": form}
+    )
 
 def employee_list(request):
     employees = Employee.objects.order_by("emp_code")

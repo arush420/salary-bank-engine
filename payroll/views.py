@@ -1,19 +1,19 @@
-import csv
-import io
-
-import openpyxl
 import pandas as pd
 from django.shortcuts import render, redirect
+from django.contrib import messages
 
-from banking.models import EmployeeBankAccount
-from .models import SalaryBatch, SalaryTransaction
-from .forms import SalaryUploadForm
 from companies.models import Company
 from employees.models import Employee
+from banking.models import EmployeeBankAccount
+from payroll.models import SalaryBatch, SalaryTransaction
+from payroll.forms import SalaryUploadForm
+from payroll.utils import should_hold_salary
+
 
 def upload_salary(request):
     if request.method == "POST":
         form = SalaryUploadForm(request.POST, request.FILES)
+
         if form.is_valid():
             month = form.cleaned_data["month"]
             year = form.cleaned_data["year"]
@@ -21,31 +21,47 @@ def upload_salary(request):
 
             company = Company.objects.first()
 
-            batch, created = SalaryBatch.objects.get_or_create(
-                company=company, month=month, year=year
+            batch, _ = SalaryBatch.objects.get_or_create(
+                company=company,
+                month=month,
+                year=year
             )
 
-            wb = openpyxl.load_workbook(file)
-            sheet = wb.active
+            df = pd.read_excel(file)
 
-            for row in sheet.iter_rows(min_row=2, values_only=True):
-                emp_code, name, salary, hold = row
+            for _, row in df.iterrows():
+                emp_code = str(row["emp_code"]).strip()
+                salary_amount = row["salary"]
 
-                employee = Employee.objects.get(emp_code=emp_code, company=company)
-                bank = EmployeeBankAccount.objects.get(employee=employee, is_active=True)
+                try:
+                    employee = Employee.objects.get(
+                        emp_code=emp_code,
+                        company=company
+                    )
+                except Employee.DoesNotExist:
+                    continue  # skip invalid employee
 
-                status = "HOLD" if str(hold).lower() == "yes" else "PENDING"
+                hold, reason = should_hold_salary(employee)
 
-                SalaryTransaction.objects.create(
+                bank = EmployeeBankAccount.objects.filter(
+                    employee=employee,
+                    is_active=True
+                ).first()
+
+                SalaryTransaction.objects.update_or_create(
                     batch=batch,
                     employee=employee,
-                    salary_amount=salary,
-                    account_number=bank.account_number,
-                    ifsc=bank.ifsc,
-                    status=status
+                    defaults={
+                        "salary_amount": salary_amount,
+                        "account_number": bank.account_number if bank else None,
+                        "ifsc": bank.ifsc if bank else None,
+                        "status": "HOLD" if hold else "PENDING",
+                        "hold_reason": reason,
+                    }
                 )
 
-            return redirect("salary_list")
+            messages.success(request, "Salary uploaded successfully")
+            return redirect("salary_dashboard")
 
     else:
         form = SalaryUploadForm()

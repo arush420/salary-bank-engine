@@ -27,9 +27,19 @@ class SalaryTransaction(models.Model):
 
     batch = models.ForeignKey(SalaryBatch, on_delete=models.CASCADE)
     employee = models.ForeignKey(Employee, on_delete=models.CASCADE)
+
     salary_amount = models.DecimalField(max_digits=10, decimal_places=2)
-    account_number = models.CharField(max_length=30)
-    ifsc = models.CharField(max_length=15)
+
+    account_number = models.CharField(
+        max_length=30,
+        null=True,
+        blank=True
+    )
+    ifsc = models.CharField(
+        max_length=15,
+        null=True,
+        blank=True
+    )
 
     status = models.CharField(
         max_length=20,
@@ -37,5 +47,20 @@ class SalaryTransaction(models.Model):
         default="PENDING"
     )
 
+    hold_reason = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
+
     utr = models.CharField(max_length=100, null=True, blank=True)
     bank_response_at = models.DateTimeField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["employee"]),
+            models.Index(fields=["batch"]),
+            models.Index(fields=["status"]),
+        ]

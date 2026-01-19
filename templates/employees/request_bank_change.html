@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Request Bank Change{% endblock %}
+
+{% block content %}
+
+<h2>Request Bank Change</h2>
+
+<form method="post" style="max-width:400px;">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Submit Request</button>
+</form>
+
+{% endblock %}
