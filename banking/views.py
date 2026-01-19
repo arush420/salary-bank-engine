@@ -1,5 +1,5 @@
 from django.http import HttpResponse
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.timezone import now
 from django.db import transaction
 
@@ -10,7 +10,7 @@ from companies.models import Company
 from .forms import BankResponseUploadForm
 from .models import BankChangeRequest
 from banking.models import EmployeeBankAccount
-
+from payroll.utils import release_salary_holds
 
 # ---------------------------
 # BANK CHANGE APPROVAL
@@ -22,7 +22,10 @@ def approval_queue(request):
 
 
 def approve_request(request, id):
-    req = BankChangeRequest.objects.get(id=id)
+    req = get_object_or_404(BankChangeRequest, id=id)
+
+    if req.status != "PENDING":
+        return redirect("approval_queue")
 
     with transaction.atomic():
         EmployeeBankAccount.objects.filter(
@@ -37,13 +40,15 @@ def approve_request(request, id):
             ifsc=req.new_ifsc,
             effective_from_month=req.effective_from_month,
             is_active=True,
-            approved_by=None,   # auth disabled for now
+            approved_by=None,  # auth disabled for now
             approved_at=now()
         )
 
         req.status = "APPROVED"
         req.approved_at = now()
-        req.save()
+        req.save(update_fields=["status", "approved_at"])
+
+        release_salary_holds(req.employee)
 
     return redirect("approval_queue")
 

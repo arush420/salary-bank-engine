@@ -31,7 +31,6 @@
 
 <div style="display: flex; gap: 20px; margin-top: 20px;">
 
-    <!-- Pending -->
     <div>
         <strong>Pending</strong><br>
         <a href="{% url 'dashboard:salary_status_list' 'PENDING' %}?month={{ month }}&year={{ year }}">
@@ -39,7 +38,6 @@
         </a>
     </div>
 
-    <!-- Hold -->
     <div>
         <strong>Hold</strong><br>
         <a href="{% url 'dashboard:salary_status_list' 'HOLD' %}?month={{ month }}&year={{ year }}">
@@ -47,7 +45,6 @@
         </a>
     </div>
 
-    <!-- Processed -->
     <div>
         <strong>Processed</strong><br>
         <a href="{% url 'dashboard:salary_status_list' 'PROCESSED' %}?month={{ month }}&year={{ year }}">
@@ -55,7 +52,6 @@
         </a>
     </div>
 
-    <!-- Failed -->
     <div>
         <strong>Failed</strong><br>
         <a href="{% url 'dashboard:salary_status_list' 'FAILED' %}?month={{ month }}&year={{ year }}">
@@ -64,6 +60,12 @@
     </div>
 
 </div>
+
+{% if batch and batch.status == "EXPORTED" %}
+    <div class="alert alert-warning">
+        🔒 Salary batch locked (Exported to bank)
+    </div>
+{% endif %}
 
 {% else %}
     <p>No salary data found for selected month/year.</p>
