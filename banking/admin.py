@@ -28,3 +28,4 @@ class BankChangeRequestAdmin(admin.ModelAdmin):
         "approved_by",
     )
     list_filter = ("status",)
+

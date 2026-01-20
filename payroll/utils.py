@@ -34,3 +34,7 @@ def release_salary_holds(employee):
         txn.status = "PENDING"
         txn.hold_reason = None
         txn.save(update_fields=["status", "hold_reason"])
+
+def assert_batch_not_reversed(batch):
+    if batch.status == "REVERSED":
+        raise Exception("Batch reversed")

@@ -61,11 +61,28 @@
 
 </div>
 
-{% if batch and batch.status == "EXPORTED" %}
-    <div class="alert alert-warning">
-        🔒 Salary batch locked (Exported to bank)
-    </div>
+{% if batch %}
+
+    {% if batch.status == "EXPORTED" %}
+        <div class="alert alert-warning">
+            🔒 Salary batch locked (Exported to bank)
+        </div>
+
+    {% elif batch.status == "REVERSED" %}
+        <div class="alert alert-danger">
+            ❌ This batch was reversed by admin. All actions are locked.
+        </div>
+
+    {% endif %}
+
+    {% if batch.status != "REVERSED" and stats.failed > 0 %}
+        <a href="{% url 'banking:retry_failed' batch.id %}">
+            🔁 Retry Failed Transactions
+        </a>
+    {% endif %}
+
 {% endif %}
+
 
 {% else %}
     <p>No salary data found for selected month/year.</p>

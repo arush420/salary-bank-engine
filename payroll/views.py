@@ -20,6 +20,7 @@ def upload_salary(request):
             year = form.cleaned_data["year"]
             file = request.FILES["file"]
 
+            # TODO: Replace with request.user.company
             company = Company.objects.first()
 
             batch, _ = SalaryBatch.objects.get_or_create(
@@ -28,13 +29,21 @@ def upload_salary(request):
                 year=year
             )
 
-            # 🔒 Batch lock enforcement
+            # 🔒 HARD LOCK: Reversed batch
+            if batch.status == "REVERSED":
+                messages.error(
+                    request,
+                    "This salary batch was reversed and is permanently locked."
+                )
+                return redirect("dashboard:salary_dashboard")
+
+            # 🔒 HARD LOCK: Non-draft batch
             if batch.status != "DRAFT":
                 messages.error(
                     request,
                     "Salary batch already exported or closed. Upload is locked."
                 )
-                return redirect("salary_dashboard")
+                return redirect("dashboard:salary_dashboard")
 
             df = pd.read_excel(file)
 
@@ -81,8 +90,8 @@ def upload_salary(request):
                         }
                     )
 
-            messages.success(request, "Salary uploaded successfully")
-            return redirect("salary_dashboard")
+            messages.success(request, "Salary uploaded successfully.")
+            return redirect("dashboard:salary_dashboard")
 
     else:
         form = SalaryUploadForm()

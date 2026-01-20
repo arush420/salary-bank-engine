@@ -1,3 +1,4 @@
+from django.contrib.auth.models import User
 from django.db import models
 from companies.models import Company
 from employees.models import Employee
@@ -130,3 +131,19 @@ class SalaryTransaction(models.Model):
 
     def __str__(self):
         return f"{self.employee.emp_code} | {self.batch.month}/{self.batch.year} | {self.status}"
+
+# =========================
+# Salary Batch reversal by admin
+# =========================
+class SalaryBatchReversal(models.Model):
+    batch = models.OneToOneField(
+        SalaryBatch,
+        on_delete=models.CASCADE,
+        related_name="reversal"
+    )
+    reason = models.TextField()
+    reversed_by = models.ForeignKey(User, on_delete=models.PROTECT)
+    reversed_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Reversal: {self.batch}"
