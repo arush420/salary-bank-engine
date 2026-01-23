@@ -1,0 +1,39 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+<h2 style="color:#b91c1c;">⚠️ Confirm Salary Batch Reversal</h2>
+
+<p><strong>This action is irreversible.</strong></p>
+
+<ul>
+  {% for batch in batches %}
+    <li>
+      {{ batch.company }} — {{ batch.month }}/{{ batch.year }}
+      (Status: {{ batch.status }})
+    </li>
+  {% endfor %}
+</ul>
+
+<form method="post">
+  {% csrf_token %}
+
+  <label>
+    <strong>Reason for reversal:</strong>
+  </label><br>
+  <textarea
+    name="reason"
+    rows="3"
+    style="width: 400px;"
+    required
+  ></textarea>
+
+  <br><br>
+
+  <button type="submit" class="button button-danger">
+    ❌ Yes, Reverse Batches
+  </button>
+
+  <a href="../" class="button">Cancel</a>
+</form>
+
+{% endblock %}

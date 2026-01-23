@@ -1,59 +1,69 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db import transaction
+from django.shortcuts import redirect, render
 from django.utils import timezone
-
-from payroll.models import (
-    SalaryBatch,
-    SalaryTransaction,
-    SalaryBatchReversal,
-)
+from django.urls import path
+from payroll.models import (SalaryBatch, SalaryTransaction, SalaryBatchReversal)
 
 
 @admin.register(SalaryBatch)
 class SalaryBatchAdmin(admin.ModelAdmin):
     list_display = ("company", "month", "year", "status", "created_at")
     list_filter = ("status", "year")
-    readonly_fields = ("created_at",)
     actions = ["reverse_batch"]
 
-    def has_change_permission(self, request, obj=None):
-        # Batch editable only in DRAFT
-        if obj and obj.status != "DRAFT":
-            return False
-        return super().has_change_permission(request, obj)
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "reverse-confirm/",
+                self.admin_site.admin_view(self.reverse_confirm),
+                name="salarybatch_reverse_confirm",
+            ),
+        ]
+        return custom_urls + urls
 
     def reverse_batch(self, request, queryset):
-        for batch in queryset:
-            if batch.status == "REVERSED":
-                self.message_user(request,f"{batch} is already reversed.",
-                    level="warning",)
-                continue
+        ids = queryset.values_list("id", flat=True)
+        return redirect(
+            f"reverse-confirm/?ids={','.join(map(str, ids))}"
+        )
 
-            with transaction.atomic():
+    reverse_batch.short_description = "⚠️ Reverse selected batches"
+
+    def reverse_confirm(self, request):
+        ids = request.GET.get("ids", "")
+        batches = SalaryBatch.objects.filter(id__in=ids.split(","))
+
+        if request.method == "POST":
+            reason = request.POST.get("reason", "Admin reversal")
+
+            for batch in batches:
+                if batch.status == "COMPLETED":
+                    self.message_user(
+                        request,
+                        f"Batch {batch} already completed. Skipped.",
+                        level=messages.ERROR,
+                    )
+                    continue
+
                 batch.status = "REVERSED"
                 batch.save(update_fields=["status"])
-
-                SalaryTransaction.objects.filter(
-                    batch=batch
-                ).exclude(
-                    status__in=["PROCESSED", "CANCELLED"]
-                ).update(
-                    status="CANCELLED",
-                    bank_response_at=timezone.now(),
-                )
 
                 SalaryBatchReversal.objects.create(
                     batch=batch,
                     reversed_by=request.user,
-                    reason="Admin reversal via panel",
+                    reason=reason,
                 )
 
-        self.message_user(
-            request,
-            "Selected batches reversed safely.",
-        )
+            self.message_user(request, "Selected batches reversed successfully.")
+            return redirect("..")
 
-    reverse_batch.short_description = "⚠️ Reverse selected batches (AUDITED)"
+        return render(
+            request,
+            "admin/payroll/reverse_confirm.html",
+            {"batches": batches},
+        )
 
 @admin.register(SalaryBatchReversal)
 class SalaryBatchReversalAdmin(admin.ModelAdmin):
