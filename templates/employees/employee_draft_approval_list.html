@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Employee Draft Approvals{% endblock %}
+
+{% block content %}
+
+<h2>🛡 Employee Draft Approvals</h2>
+
+{% if draft_data %}
+<div class="table-container mt-3">
+    <table>
+        <thead>
+            <tr>
+                <th>Company</th>
+                <th>Emp Code</th>
+                <th>Name</th>
+                <th>UAN</th>
+                <th>ESIC</th>
+                <th>Created By</th>
+                <th>Conflicts</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for item in draft_data %}
+            <tr>
+                <td>{{ item.draft.company }}</td>
+                <td>{{ item.draft.emp_code }}</td>
+                <td>{{ item.draft.name }}</td>
+                <td>{{ item.draft.uan_number|default:"—" }}</td>
+                <td>{{ item.draft.esic_number|default:"—" }}</td>
+                <td>{{ item.draft.created_by|default:"—" }}</td>
+
+                <td>
+                    {% if item.conflicts %}
+                        <ul style="color:red; margin:0; padding-left:18px;">
+                            {% for conflict in item.conflicts %}
+                                <li>{{ conflict }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <span style="color:green;">✔ No conflicts</span>
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if item.can_approve %}
+                        <a class="btn btn-success btn-sm"
+                           href="{% url 'employees:approve_employee_draft' item.draft.id %}">
+                            Approve
+                        </a>
+                    {% else %}
+                        <button class="btn btn-secondary btn-sm" disabled>
+                            Cannot Approve
+                        </button>
+                    {% endif %}
+
+                    <a class="btn btn-danger btn-sm"
+                       href="{% url 'employees:reject_employee_draft' item.draft.id %}">
+                        Reject
+                    </a>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+    <p class="mt-3">No pending drafts 🎉</p>
+{% endif %}
+
+{% endblock %}

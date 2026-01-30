@@ -7,15 +7,23 @@
 
 <h2>{{ employee.name }} ({{ employee.emp_code }})</h2>
 
-<p><strong>Status:</strong> {{ employee.is_active|yesno:"Active,Left" }}</p>
-<p><strong>Joining Date:</strong> {{ employee.join_date }}</p>
+<p>
+    <strong>Joining Date:</strong>
+    {{ employee.joining_date|date:"d M Y" }}
+</p>
 
 {% if employee.exit_date %}
-    <p><strong>Exit Date:</strong> {{ employee.exit_date }}</p>
+    <p>
+        <strong>Exit Date:</strong>
+        {{ employee.exit_date|date:"d M Y" }}
+    </p>
 {% endif %}
 
 <hr>
 
+<!-- =========================
+     SALARY SECTION
+========================= -->
 <h3>Salary</h3>
 
 {% if latest_salary %}
@@ -34,6 +42,9 @@
 
 <hr>
 
+<!-- =========================
+     BANK ACCOUNTS
+========================= -->
 <h3>Bank Accounts</h3>
 
 {% if active_account %}
@@ -43,7 +54,7 @@
         A/C: {{ active_account.account_number }}<br>
         IFSC: {{ active_account.ifsc }}<br>
         <small>
-            Approved by {{ active_account.approved_by }}
+            Approved by {{ active_account.approved_by|default:"—" }}
             on {{ active_account.approved_at|date:"d M Y" }}
         </small>
     </div>
@@ -54,32 +65,35 @@
 <h4>Bank Account History</h4>
 
 {% if bank_accounts %}
-    <table style="width:100%; background:white; border-collapse:collapse;">
-        <tr style="background:#f0f0f0;">
-            <th>Bank</th>
-            <th>Account</th>
-            <th>IFSC</th>
-            <th>Status</th>
-            <th>Approved By</th>
-            <th>Approved At</th>
-        </tr>
-
-        {% for acc in bank_accounts %}
-            <tr style="border-bottom:1px solid #ddd;">
-                <td>{{ acc.bank_name }}</td>
-                <td>{{ acc.account_number }}</td>
-                <td>{{ acc.ifsc }}</td>
-                <td>
-                    {% if acc.is_active %}
-                        <strong style="color:green;">Active</strong>
-                    {% else %}
-                        Inactive
-                    {% endif %}
-                </td>
-                <td>{{ acc.approved_by|default:"—" }}</td>
-                <td>{{ acc.approved_at|date:"d M Y"|default:"—" }}</td>
+    <table style="width:100%; border-collapse:collapse;">
+        <thead style="background:#f0f0f0;">
+            <tr>
+                <th>Bank</th>
+                <th>Account</th>
+                <th>IFSC</th>
+                <th>Status</th>
+                <th>Approved By</th>
+                <th>Approved At</th>
             </tr>
-        {% endfor %}
+        </thead>
+        <tbody>
+            {% for acc in bank_accounts %}
+                <tr style="border-bottom:1px solid #ddd;">
+                    <td>{{ acc.bank_name }}</td>
+                    <td>{{ acc.account_number }}</td>
+                    <td>{{ acc.ifsc }}</td>
+                    <td>
+                        {% if acc.is_active %}
+                            <strong style="color:green;">Active</strong>
+                        {% else %}
+                            Inactive
+                        {% endif %}
+                    </td>
+                    <td>{{ acc.approved_by|default:"—" }}</td>
+                    <td>{{ acc.approved_at|date:"d M Y"|default:"—" }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
     </table>
 {% else %}
     <p>No bank history found.</p>
@@ -87,14 +101,77 @@
 
 <hr>
 
-{% if employee.is_active %}
-    <a href="{% url 'employees:bank_change' employee.id %}">
-        ➕ Request Bank Change
-    </a>
-{% else %}
-    <p style="color:#999;">
-        Bank change not allowed for inactive employees.
-    </p>
+<a class="btn btn-outline"
+   href="{% url 'employees:bank_change' employee.id %}">
+    ➕ Request Bank Change
+</a>
+
+<hr>
+
+<!-- =========================
+     PENDING PROFILE CHANGES
+========================= -->
+{% if pending_changes %}
+<h3>🕒 Pending Profile Change Requests</h3>
+
+<div class="card">
+    <table style="width:100%; border-collapse:collapse;">
+        <thead style="background:#f9fafb;">
+            <tr>
+                <th>Field</th>
+                <th>Current Value</th>
+                <th>Requested Value</th>
+                <th>Requested By</th>
+                <th>Requested At</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in pending_changes %}
+                {% for field, values in req.changes.items %}
+                <tr style="border-bottom:1px solid #eee;">
+                    <td>{{ field|capfirst }}</td>
+                    <td>{{ values.old|default:"—" }}</td>
+                    <td><strong>{{ values.new|default:"—" }}</strong></td>
+                    <td>{{ req.requested_by }}</td>
+                    <td>{{ req.requested_at|date:"d M Y H:i" }}</td>
+                </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if request.user.is_staff %}
+        <div style="margin-top:15px;">
+            <a class="btn btn-success"
+               href="{% url 'employees:approve_employee_change' employee.id %}">
+                ✅ Approve All Changes
+            </a>
+
+            <a class="btn btn-danger"
+               href="{% url 'employees:reject_employee_change' employee.id %}">
+                ❌ Reject All Changes
+            </a>
+        </div>
+    {% endif %}
+</div>
 {% endif %}
+
+<hr>
+
+<!-- =========================
+     REQUEST PROFILE EDIT
+========================= -->
+<a class="btn btn-outline"
+   href="{% url 'employees:employee_change_request' employee.id %}">
+    ✏️ Request Profile Edit
+</a>
+
+{% if request.session.employee_draft_upload_errors %}
+    <a class="btn btn-warning"
+       href="{% url 'employees:employee_draft_upload_errors' %}">
+        ⬇ Download Upload Error Report
+    </a>
+{% endif %}
+
 
 {% endblock %}

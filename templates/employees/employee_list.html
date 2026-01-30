@@ -4,6 +4,23 @@
 {% block content %}
 <h2>Employees</h2>
 
+<div class="mb-3">
+    {% if not request.user.is_staff %}
+        <a class="btn btn-success"
+           href="{% url 'employees:upload_employee_drafts' %}">
+            📤 Bulk Employee Upload
+        </a>
+    {% endif %}
+
+    {% if request.user.is_staff %}
+        <a class="btn btn-outline"
+           href="{% url 'employees:employee_draft_approval_list' %}">
+            🛡 Employee Approvals
+        </a>
+    {% endif %}
+</div>
+
+
 <table style="width:100%; background:white; border-collapse:collapse; margin-top:20px;">
     <tr style="background:#f0f0f0;">
         <th>Emp Code</th>

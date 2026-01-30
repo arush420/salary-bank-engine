@@ -83,6 +83,16 @@
 
 {% endif %}
 
+{% if batch and batch.status != "REVERSED" and user.is_superuser %}
+    <a
+        href="{% url 'dashboard:reverse_batch_confirm' batch.id %}"
+        class="btn btn-danger"
+        style="margin-top:15px;"
+    >
+        ⚠️ Reverse Salary Batch
+    </a>
+{% endif %}
+
 
 {% else %}
     <p>No salary data found for selected month/year.</p>

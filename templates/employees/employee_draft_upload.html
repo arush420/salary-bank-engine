@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Bulk Employee Upload{% endblock %}
+
+{% block content %}
+<div class="card">
+
+<h2>📤 Bulk Employee Upload (Draft)</h2>
+
+<p>
+    <strong>Step 1:</strong>
+    <a class="btn btn-outline"
+       href="{% url 'employees:employee_draft_template' %}">
+        Download Excel Template
+    </a>
+</p>
+
+<p>
+    <strong>Step 2:</strong> Fill employee details (no bank / approval data)
+</p>
+
+<p>
+    <strong>Step 3:</strong> Upload completed file
+</p>
+
+<form method="post" enctype="multipart/form-data" class="mt-3">
+    {% csrf_token %}
+    <input type="file" name="file" required>
+    <br><br>
+    <button class="btn btn-success">Upload Drafts</button>
+</form>
+
+<p class="mt-3 text-muted">
+    ⚠ Uploaded employees will remain in <strong>DRAFT</strong> until approved by Admin.
+</p>
+
+</div>
+{% endblock %}

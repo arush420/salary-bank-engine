@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Pending Employee Drafts</h2>
+
+<a href="{% url 'employees:employee_draft_create' %}">
+    ➕ Add New Employee
+</a>
+
+<table border="1" cellpadding="8" cellspacing="0">
+    <tr>
+        <th>Emp Code</th>
+        <th>Name</th>
+        <th>Company</th>
+        <th>Created By</th>
+        <th>Date</th>
+    </tr>
+
+    {% for d in drafts %}
+    <tr>
+        <td>{{ d.emp_code }}</td>
+        <td>{{ d.name }}</td>
+        <td>{{ d.company }}</td>
+        <td>{{ d.created_by }}</td>
+        <td>{{ d.created_at|date:"d M Y" }}</td>
+    </tr>
+    {% empty %}
+    <tr>
+        <td colspan="5">No pending drafts.</td>
+    </tr>
+    {% endfor %}
+</table>
+
+{% endblock %}

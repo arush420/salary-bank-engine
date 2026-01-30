@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Reject Employee Draft</h2>
+
+<p>
+    Rejecting <strong>{{ draft.emp_code }} – {{ draft.name }}</strong>
+</p>
+
+<form method="post">
+    {% csrf_token %}
+    <label>Reason</label><br>
+    <textarea name="reason" rows="4" cols="50"></textarea><br><br>
+    <button type="submit">Confirm Reject</button>
+</form>
+
+<a href="{% url 'employees:employee_draft_approval_list' %}">
+    ← Back
+</a>
+
+{% endblock %}

@@ -1,12 +1,17 @@
 from datetime import date
-from django.shortcuts import render
-from django.db.models import Sum
+from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.db import models
+from django.db.models import Sum
+from django.shortcuts import get_object_or_404, redirect, render
 
 from employees.models import Employee
-from payroll import models
-from payroll.models import SalaryBatch, SalaryTransaction
-
+from payroll.models import (
+    SalaryBatch,
+    SalaryBatchReversal,
+    SalaryTransaction
+)
+from .utils import can_reverse_batch
 
 def salary_dashboard(request):
     today = date.today()
@@ -129,3 +134,36 @@ def employee_salary_ledger(request, employee_id):
         context
     )
 
+def reverse_batch_confirm(request, batch_id):
+    batch = get_object_or_404(SalaryBatch, id=batch_id)
+
+    if not can_reverse_batch(request.user):
+        raise PermissionDenied("Not allowed")
+
+    if batch.status == "COMPLETED":
+        messages.error(request, "Completed batch cannot be reversed.")
+        return redirect("dashboard:salary_dashboard")
+
+    if request.method == "POST":
+        reason = request.POST.get("reason")
+        if not reason:
+            messages.error(request, "Reason is required.")
+            return redirect(request.path)
+
+        batch.status = "REVERSED"
+        batch.save(update_fields=["status"])
+
+        SalaryBatchReversal.objects.create(
+            batch=batch,
+            reversed_by=request.user,
+            reason=reason,
+        )
+
+        messages.success(request, "Salary batch reversed successfully.")
+        return redirect("dashboard:salary_dashboard")
+
+    return render(
+        request,
+        "dashboard/reverse_batch_confirm.html",
+        {"batch": batch}
+    )

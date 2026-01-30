@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 style="color:#b91c1c;">⚠️ Reverse Salary Batch</h2>
+
+<p>
+    <strong>{{ batch.company }}</strong><br>
+    Month: {{ batch.month }} / {{ batch.year }}<br>
+    Current Status: <strong>{{ batch.status }}</strong>
+</p>
+
+<p style="color:#b91c1c;">
+    This action is irreversible. All salary operations for this batch
+    will be permanently locked.
+</p>
+
+<form method="post">
+    {% csrf_token %}
+
+    <label><strong>Reason for reversal</strong></label><br>
+    <textarea
+        name="reason"
+        rows="4"
+        style="width:400px"
+        required
+    ></textarea>
+
+    <br><br>
+
+    <button type="submit" class="btn btn-danger">
+        ❌ Reverse Batch
+    </button>
+
+    <a href="{% url 'dashboard:salary_dashboard' %}" class="btn btn-secondary">
+        Cancel
+    </a>
+</form>
+
+{% endblock %}

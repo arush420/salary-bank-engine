@@ -428,7 +428,23 @@
                 <a href="{% url 'payroll:salary_upload' %}">Upload Salary</a>
                 <a href="{% url 'banking:bank_response_upload' %}">Bank Response</a>
                 <a href="{% url 'banking:approval_queue' %}">Approvals</a>
+
+                {% if request.user.is_staff %}
+                    <a href="{% url 'employees:employee_draft_approval_list' %}">
+                        🛡 Employee Approvals
+                    </a>
+                {% else %}
+                    <a href="{% url 'employees:upload_employee_drafts' %}">
+                        📤 Bulk Employee Upload
+                    </a>
+
+                    <a href="{% url 'employees:employee_draft_approval_list' %}">
+                        🛡 Employee Drafts
+                    </a>
+
+                {% endif %}
             </div>
+
         </div>
     </div>
 </nav>
@@ -451,6 +467,7 @@
 
     {% block content %}{% endblock %}
 </div>
+
 
 <!-- FOOTER -->
 <footer>

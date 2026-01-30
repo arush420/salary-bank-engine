@@ -1,10 +1,21 @@
-from django.shortcuts import render, redirect
+from django.db import transaction
+from django.http import HttpResponse
+from django.shortcuts import render, redirect, get_object_or_404
+import pandas as pd
+from django.template.defaulttags import now
 
+from companies.models import Company
 from payroll.models import SalaryTransaction
-# from django.contrib.auth.decorators import login_required
-from .forms import BankChangeRequestForm
-from .models import Employee
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+
+from .forms import BankChangeRequestForm, EmployeeDraftForm
+from .models import Employee, EmployeeDraft, AuditLog, EmployeeChangeRequest
 from banking.models import EmployeeBankAccount, BankChangeRequest
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.utils import timezone
+
 
 
 
@@ -36,27 +47,33 @@ def employee_list(request):
 
 
 def employee_profile(request, employee_id):
-    employee = Employee.objects.get(id=employee_id)
+    employee = get_object_or_404(Employee, id=employee_id)
 
     latest_salary = SalaryTransaction.objects.filter(
         employee=employee
-    ).order_by(
-        "-batch__year", "-batch__month"
-    ).first()
+    ).order_by("-created_at").first()
 
     bank_accounts = EmployeeBankAccount.objects.filter(
         employee=employee
-    ).order_by(
-        "-is_active", "-approved_at"
-    )
+    ).order_by("-is_active", "-approved_at")
 
     active_account = bank_accounts.filter(is_active=True).first()
+
+    # ✅ Audit timeline
+    audit_logs = AuditLog.objects.filter(
+        description__icontains=employee.emp_code
+    ).order_by("-created_at")
+
+    # ✅ THIS IS THE MISSING PIECE
+    pending_changes = employee.change_requests.filter(status="PENDING")
 
     context = {
         "employee": employee,
         "latest_salary": latest_salary,
         "bank_accounts": bank_accounts,
         "active_account": active_account,
+        "audit_logs": audit_logs,
+        "pending_changes": pending_changes,  # 🔥 USED IN TEMPLATE
     }
 
     return render(
@@ -64,3 +81,475 @@ def employee_profile(request, employee_id):
         "employees/employee_profile.html",
         context
     )
+
+
+@login_required
+def employee_draft_create(request):
+    if request.method == "POST":
+        form = EmployeeDraftForm(request.POST)
+        if form.is_valid():
+            draft = form.save(commit=False)
+            draft.created_by = request.user
+            draft.save()
+
+            messages.success(
+                request,
+                "Employee draft submitted for approval."
+            )
+            return redirect("employees:employee_draft_list")
+    else:
+        form = EmployeeDraftForm()
+
+    return render(
+        request,
+        "employees/employee_draft_form.html",
+        {"form": form}
+    )
+
+
+@login_required
+def employee_draft_list(request):
+    drafts = EmployeeDraft.objects.filter(status="PENDING").order_by("-created_at")
+    return render(
+        request,
+        "employees/employee_draft_list.html",
+        {"drafts": drafts}
+    )
+
+@staff_member_required
+def employee_draft_approval_list(request):
+    drafts = EmployeeDraft.objects.filter(status="PENDING").select_related("company")
+
+    return render(
+        request,
+        "employees/employee_draft_approval_list.html",
+        {"drafts": drafts}
+    )
+
+
+from django.db import IntegrityError
+
+@staff_member_required
+def approve_employee_draft(request, draft_id):
+    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
+
+    # 🔎 Uniqueness checks
+    conflicts = []
+
+    if draft.esic_number and Employee.objects.filter(esic_number=draft.esic_number).exists():
+        conflicts.append("ESIC number already exists")
+
+    if draft.uan_number and Employee.objects.filter(uan_number=draft.uan_number).exists():
+        conflicts.append("UAN number already exists")
+
+    if draft.document_number and Employee.objects.filter(document_number=draft.document_number).exists():
+        conflicts.append("Document number already exists")
+
+    if conflicts:
+        draft.status = "REJECTED"
+        draft.save(update_fields=["status"])
+
+        AuditLog.objects.create(
+            action="EMPLOYEE_DRAFT_REJECTED",
+            performed_by=request.user,
+            description=(
+                f"Draft {draft.emp_code} rejected due to conflicts: "
+                + ", ".join(conflicts)
+            )
+        )
+
+        messages.error(
+            request,
+            f"Draft rejected: {', '.join(conflicts)}"
+        )
+        return redirect("employees:employee_draft_approval_list")
+
+    # ✅ Safe to create employee
+    try:
+        employee = Employee.objects.create(
+            company=draft.company,
+            emp_code=draft.emp_code,
+            name=draft.name,
+            father_name=draft.father_name,
+            uan_number=draft.uan_number,
+            esic_number=draft.esic_number,
+            document_number=draft.document_number,
+            default_salary=draft.default_salary,
+            joining_date=draft.joining_date,
+            approved_by=request.user,
+        )
+    except IntegrityError:
+        messages.error(
+            request,
+            "Approval failed due to a uniqueness conflict."
+        )
+        return redirect("employees:employee_draft_approval_list")
+
+    draft.status = "APPROVED"
+    draft.save(update_fields=["status"])
+
+    AuditLog.objects.create(
+        action="EMPLOYEE_APPROVED",
+        performed_by=request.user,
+        description=f"Employee {employee.emp_code} approved from draft"
+    )
+
+    messages.success(request, f"Employee {employee.emp_code} approved successfully")
+    return redirect("employees:employee_draft_approval_list")
+
+
+
+@staff_member_required
+def reject_employee_draft(request, draft_id):
+    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
+
+    draft.status = "REJECTED"
+    draft.save(update_fields=["status"])
+
+    AuditLog.objects.create(
+        action="EMPLOYEE_REJECTED",
+        performed_by=request.user,
+        description=f"Employee draft {draft.emp_code} rejected"
+    )
+
+    messages.error(request, f"Employee draft {draft.emp_code} rejected")
+    return redirect("employees:employee_draft_approval_list")
+
+
+
+def download_employee_draft_template(request):
+    columns = [
+        "emp_code",
+        "name",
+        "father_name",
+        "uan_number",
+        "esic_number",
+        "document_number",
+        "default_salary",
+        "joining_date",
+    ]
+
+    df = pd.DataFrame(columns=columns)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=employee_draft_template.xlsx"
+
+    df.to_excel(response, index=False)
+    return response
+
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db import transaction
+from django.shortcuts import redirect, render
+from django.contrib import messages
+import pandas as pd
+
+@staff_member_required
+def upload_employee_drafts(request):
+    if request.method == "POST":
+        file = request.FILES.get("file")
+
+        if not file:
+            messages.error(request, "Please upload a file")
+            return redirect("employees:upload_employee_drafts")
+
+        df = pd.read_excel(file)
+
+        required_columns = {
+            "emp_code",
+            "name",
+            "father_name",
+            "uan_number",
+            "esic_number",
+            "document_number",
+            "default_salary",
+            "joining_date",
+        }
+
+        if not required_columns.issubset(df.columns):
+            messages.error(
+                request,
+                f"Excel must contain columns: {', '.join(sorted(required_columns))}"
+            )
+            return redirect("employees:upload_employee_drafts")
+
+        company = Company.objects.first()  # TODO: derive from logged-in user
+
+        created = 0
+        skipped = 0
+        error_rows = []
+
+        with transaction.atomic():
+            for index, row in df.iterrows():
+                emp_code = str(row.get("emp_code", "")).strip()
+
+                def skip(reason):
+                    error_rows.append({
+                        "row_number": index + 2,  # Excel header is row 1
+                        "emp_code": emp_code or "—",
+                        "reason": reason,
+                    })
+
+                if not emp_code:
+                    skipped += 1
+                    skip("Employee code missing")
+                    continue
+
+                # Normalize identifiers
+                esic = str(row["esic_number"]).strip() if pd.notna(row.get("esic_number")) else None
+                uan = str(row["uan_number"]).strip() if pd.notna(row.get("uan_number")) else None
+                doc = str(row["document_number"]).strip() if pd.notna(row.get("document_number")) else None
+
+                # Duplicate checks against approved employees
+                if Employee.objects.filter(company=company, emp_code=emp_code).exists():
+                    skipped += 1
+                    skip("Employee code already exists")
+                    continue
+
+                if esic and Employee.objects.filter(esic_number=esic).exists():
+                    skipped += 1
+                    skip("ESIC number already exists")
+                    continue
+
+                if uan and Employee.objects.filter(uan_number=uan).exists():
+                    skipped += 1
+                    skip("UAN number already exists")
+                    continue
+
+                if doc and Employee.objects.filter(document_number=doc).exists():
+                    skipped += 1
+                    skip("Document number already exists")
+                    continue
+
+                # Duplicate pending draft
+                if EmployeeDraft.objects.filter(
+                    company=company,
+                    emp_code=emp_code,
+                    status="PENDING"
+                ).exists():
+                    skipped += 1
+                    skip("Pending draft already exists")
+                    continue
+
+                # Parse joining date safely
+                joining_date = pd.to_datetime(row.get("joining_date"), errors="coerce")
+                if pd.isna(joining_date):
+                    skipped += 1
+                    skip("Invalid joining date")
+                    continue
+
+                # Create draft
+                EmployeeDraft.objects.create(
+                    company=company,
+                    emp_code=emp_code,
+                    name=str(row.get("name", "")).strip(),
+                    father_name=str(row.get("father_name", "")).strip(),
+                    uan_number=uan,
+                    esic_number=esic,
+                    document_number=doc,
+                    default_salary=row.get("default_salary"),
+                    joining_date=joining_date.date(),
+                    created_by=request.user,
+                )
+
+                created += 1
+
+        # Store error report in session (for Excel download)
+        if error_rows:
+            request.session["employee_draft_upload_errors"] = error_rows
+            messages.warning(
+                request,
+                "Some rows were skipped. You can download the error report for details."
+            )
+        else:
+            request.session.pop("employee_draft_upload_errors", None)
+
+        messages.success(
+            request,
+            f"Upload completed: {created} drafts created, {skipped} rows skipped."
+        )
+
+        return redirect("employees:employee_draft_list")
+
+    return render(request, "employees/employee_draft_upload.html")
+
+
+def request_employee_change(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    if request.method == "POST":
+        changes = {}
+
+        for field in [
+            "name",
+            "father_name",
+            "uan_number",
+            "esic_number",
+            "document_number",
+            "default_salary",
+            "exit_date",
+        ]:
+            new_val = request.POST.get(field)
+            old_val = getattr(employee, field)
+
+            if str(old_val) != str(new_val) and new_val:
+                changes[field] = {
+                    "old": old_val,
+                    "new": new_val
+                }
+
+        if not changes:
+            return redirect("employees:employee_profile", employee_id=employee.id)
+
+        EmployeeChangeRequest.objects.create(
+            employee=employee,
+            changes=changes,
+            requested_by=request.user
+        )
+
+        AuditLog.objects.create(
+            action="EMPLOYEE_CHANGE_REQUESTED",
+            description=f"Change requested for {employee.emp_code}: {changes}",
+            performed_by=request.user
+        )
+
+        return redirect("employees:employee_profile", employee_id=employee.id)
+
+    return render(
+        request,
+        "employees/employee_change_request.html",
+        {"employee": employee, }
+    )
+
+
+def apply_employee_change(request, request_id):
+    change_req = get_object_or_404(
+        EmployeeChangeRequest,
+        id=request_id,
+        status="PENDING"
+    )
+
+    employee = change_req.employee
+
+    for field, values in change_req.changes.items():
+        setattr(employee, field, values["new"])
+
+    employee.save()
+
+    change_req.status = "APPLIED"
+    change_req.applied_by = request.user
+    change_req.applied_at = now()
+    change_req.save()
+
+    AuditLog.objects.create(
+        action="EMPLOYEE_CHANGE_APPLIED",
+        description=f"Applied changes to {employee.emp_code}: {change_req.changes}",
+        performed_by=request.user
+    )
+
+    return redirect("employees:employee_profile", employee_id=employee.id)
+
+@staff_member_required
+def approve_employee_change(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    change_requests = employee.change_requests.filter(status="PENDING")
+
+    if not change_requests.exists():
+        return redirect("employees:employee_profile", employee.id)
+
+    with transaction.atomic():
+        for req in change_requests:
+            for field, values in req.changes.items():
+                setattr(employee, field, values["new"])  # ✅ FIXED
+
+            employee.save()
+
+            req.status = "APPROVED"
+            req.reviewed_by = request.user
+            req.reviewed_at = timezone.now()
+            req.save()
+
+            AuditLog.objects.create(
+                action="EMPLOYEE_PROFILE_UPDATED",
+                performed_by=request.user,
+                description=(
+                    f"Approved profile changes for "
+                    f"{employee.emp_code}: {req.changes}"
+                )
+            )
+
+    return redirect("employees:employee_profile", employee.id)@staff_member_required
+def approve_employee_change(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    change_requests = employee.change_requests.filter(status="PENDING")
+
+    if not change_requests.exists():
+        return redirect("employees:employee_profile", employee.id)
+
+    with transaction.atomic():
+        for req in change_requests:
+            for field, values in req.changes.items():
+                setattr(employee, field, values["new"])  # ✅ FIXED
+
+            employee.save()
+
+            req.status = "APPROVED"
+            req.reviewed_by = request.user
+            req.reviewed_at = timezone.now()
+            req.save()
+
+            AuditLog.objects.create(
+                action="EMPLOYEE_PROFILE_UPDATED",
+                performed_by=request.user,
+                description=(
+                    f"Approved profile changes for "
+                    f"{employee.emp_code}: {req.changes}"
+                )
+            )
+
+    return redirect("employees:employee_profile", employee.id)
+
+@staff_member_required
+def reject_employee_change(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+    change_requests = employee.change_requests.filter(status="PENDING")
+
+    with transaction.atomic():
+        for req in change_requests:
+            req.status = "REJECTED"
+            req.reviewed_by = request.user
+            req.reviewed_at = timezone.now()
+            req.rejection_reason = "Rejected by admin"
+            req.save()
+
+            AuditLog.objects.create(
+                action="EMPLOYEE_PROFILE_CHANGE_REJECTED",
+                performed_by=request.user,
+                description=(
+                    f"Rejected profile change for "
+                    f"{employee.emp_code}: {req.changes}"
+                )
+            )
+
+    return redirect("employees:employee_profile", employee.id)
+
+
+@staff_member_required
+def download_employee_draft_errors(request):
+    errors = request.session.get("employee_draft_upload_errors")
+
+    if not errors:
+        messages.info(request, "No error report available.")
+        return redirect("employees:employee_draft_list")
+
+    df = pd.DataFrame(errors)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = "attachment; filename=employee_draft_upload_errors.xlsx"
+
+    df.to_excel(response, index=False)
+
+    return response

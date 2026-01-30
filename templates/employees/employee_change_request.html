@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2>Edit Employee (Request)</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    <label>Name</label>
+    <input type="text" name="name" value="{{ employee.name }}">
+
+    <label>Father Name</label>
+    <input type="text" name="father_name" value="{{ employee.father_name }}">
+
+    <label>UAN</label>
+    <input type="text" name="uan_number" value="{{ employee.uan_number }}">
+
+    <label>ESIC</label>
+    <input type="text" name="esic_number" value="{{ employee.esic_number }}">
+
+    <label>Document Number</label>
+    <input type="text" name="document_number" value="{{ employee.document_number }}">
+
+    <label>Salary</label>
+    <input type="number" step="0.01" name="default_salary" value="{{ employee.default_salary }}">
+
+    <label>Exit Date</label>
+    <input type="date" name="exit_date" value="{{ employee.exit_date }}">
+
+    <br><br>
+    <button class="btn btn-warning">Submit Change Request</button>
+</form>
+
+{% endblock %}
