@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create Organisation Account</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    {{ form.as_p }}
+
+    <label for="organisation_name"><strong>Organisation Name</strong></label>
+    <input type="text"
+           name="organisation_name"
+           id="organisation_name"
+           required
+           placeholder="e.g. GT Construction Pvt Ltd">
+
+    <button type="submit">Register</button>
+</form>
+{% endblock %}

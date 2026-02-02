@@ -82,6 +82,11 @@ urlpatterns = [
         views.download_employee_draft_errors,
         name="employee_draft_upload_errors"
     ),
+    path(
+        "drafts/<int:draft_id>/merge/",
+        views.merge_employee_draft,
+        name="merge_employee_draft"
+    ),
 
 
 ]

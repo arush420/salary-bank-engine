@@ -8,6 +8,7 @@
 {% if draft_data %}
 <div class="table-container mt-3">
     <table>
+        <caption class="visually-hidden">Pending employee draft approvals with conflict information</caption>
         <thead>
             <tr>
                 <th>Company</th>
@@ -33,30 +34,42 @@
 
                 <td>
                     {% if item.conflicts %}
-                        <ul style="color:red; margin:0; padding-left:18px;">
+                        <ul class="conflict-list">
                             {% for conflict in item.conflicts %}
                                 <li>{{ conflict }}</li>
                             {% endfor %}
                         </ul>
                     {% else %}
-                        <span style="color:green;">✔ No conflicts</span>
+                        <span class="no-conflicts">✔ No conflicts</span>
                     {% endif %}
                 </td>
 
                 <td>
                     {% if item.can_approve %}
                         <a class="btn btn-success btn-sm"
-                           href="{% url 'employees:approve_employee_draft' item.draft.id %}">
+                           href="{% url 'employees:approve_employee_draft' item.draft.id %}"
+                           aria-label="Approve draft for {{ item.draft.name }}">
                             Approve
                         </a>
                     {% else %}
-                        <button class="btn btn-secondary btn-sm" disabled>
+                        <button class="btn btn-secondary btn-sm"
+                                disabled
+                                aria-label="Cannot approve draft for {{ item.draft.name }}">
                             Cannot Approve
                         </button>
                     {% endif %}
 
+                    {% if item.merge_candidate %}
+                        <a class="btn btn-warning btn-sm"
+                           href="{% url 'employees:merge_employee_draft' item.draft.id %}"
+                           aria-label="Merge draft for {{ item.draft.name }}">
+                            🔁 Merge
+                        </a>
+                    {% endif %}
+
                     <a class="btn btn-danger btn-sm"
-                       href="{% url 'employees:reject_employee_draft' item.draft.id %}">
+                       href="{% url 'employees:reject_employee_draft' item.draft.id %}"
+                       aria-label="Reject draft for {{ item.draft.name }}">
                         Reject
                     </a>
                 </td>
@@ -65,8 +78,32 @@
         </tbody>
     </table>
 </div>
+
 {% else %}
     <p class="mt-3">No pending drafts 🎉</p>
 {% endif %}
 
 {% endblock %}
+
+
+.conflict-list {
+    color: #dc3545;
+    margin: 0;
+    padding-left: 18px;
+}
+
+.no-conflicts {
+    color: #28a745;
+}
+
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}

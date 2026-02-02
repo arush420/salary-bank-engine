@@ -120,10 +120,52 @@ def employee_draft_list(request):
 def employee_draft_approval_list(request):
     drafts = EmployeeDraft.objects.filter(status="PENDING").select_related("company")
 
+    draft_data = []
+
+    for draft in drafts:
+        conflicts = []
+        merge_candidate = None
+
+        # 🔴 HARD CONFLICT CHECKS
+        if draft.esic_number and Employee.objects.filter(esic_number=draft.esic_number).exists():
+            conflicts.append("ESIC already exists")
+
+        if draft.uan_number and Employee.objects.filter(uan_number=draft.uan_number).exists():
+            conflicts.append("UAN already exists")
+
+        if draft.document_number and Employee.objects.filter(
+            document_number=draft.document_number
+        ).exists():
+            conflicts.append("Document number already exists")
+
+        if Employee.objects.filter(
+            company=draft.company,
+            emp_code=draft.emp_code
+        ).exists():
+            conflicts.append("Employee code already exists")
+
+        # 🔁 MERGE CANDIDATE (ONLY IF CONFLICT EXISTS)
+        if draft.esic_number:
+            merge_candidate = Employee.objects.filter(
+                esic_number=draft.esic_number
+            ).first()
+
+        if not merge_candidate and draft.uan_number:
+            merge_candidate = Employee.objects.filter(
+                uan_number=draft.uan_number
+            ).first()
+
+        draft_data.append({
+            "draft": draft,
+            "conflicts": conflicts,
+            "can_approve": len(conflicts) == 0,
+            "merge_candidate": merge_candidate,
+        })
+
     return render(
         request,
         "employees/employee_draft_approval_list.html",
-        {"drafts": drafts}
+        {"draft_data": draft_data}
     )
 
 
@@ -274,11 +316,13 @@ def upload_employee_drafts(request):
             )
             return redirect("employees:upload_employee_drafts")
 
-        company = Company.objects.first()  # TODO: derive from logged-in user
+        # ✅ ENFORCE COMPANY FROM LOGGED-IN USER
+        company = request.user.company
 
         created = 0
         skipped = 0
         error_rows = []
+        warning_rows = []
 
         with transaction.atomic():
             for index, row in df.iterrows():
@@ -286,7 +330,7 @@ def upload_employee_drafts(request):
 
                 def skip(reason):
                     error_rows.append({
-                        "row_number": index + 2,  # Excel header is row 1
+                        "row_number": index + 2,  # Excel header = row 1
                         "emp_code": emp_code or "—",
                         "reason": reason,
                     })
@@ -297,11 +341,11 @@ def upload_employee_drafts(request):
                     continue
 
                 # Normalize identifiers
-                esic = str(row["esic_number"]).strip() if pd.notna(row.get("esic_number")) else None
-                uan = str(row["uan_number"]).strip() if pd.notna(row.get("uan_number")) else None
-                doc = str(row["document_number"]).strip() if pd.notna(row.get("document_number")) else None
+                esic = str(row.get("esic_number")).strip() if pd.notna(row.get("esic_number")) else None
+                uan = str(row.get("uan_number")).strip() if pd.notna(row.get("uan_number")) else None
+                doc = str(row.get("document_number")).strip() if pd.notna(row.get("document_number")) else None
 
-                # Duplicate checks against approved employees
+                # 🔴 HARD BLOCKS
                 if Employee.objects.filter(company=company, emp_code=emp_code).exists():
                     skipped += 1
                     skip("Employee code already exists")
@@ -322,7 +366,6 @@ def upload_employee_drafts(request):
                     skip("Document number already exists")
                     continue
 
-                # Duplicate pending draft
                 if EmployeeDraft.objects.filter(
                     company=company,
                     emp_code=emp_code,
@@ -332,14 +375,32 @@ def upload_employee_drafts(request):
                     skip("Pending draft already exists")
                     continue
 
-                # Parse joining date safely
+                # Parse joining date
                 joining_date = pd.to_datetime(row.get("joining_date"), errors="coerce")
                 if pd.isna(joining_date):
                     skipped += 1
                     skip("Invalid joining date")
                     continue
 
-                # Create draft
+                # 🟡 SOFT WARNINGS
+                warnings = []
+
+                if not row.get("father_name"):
+                    warnings.append("Father name missing")
+
+                salary = row.get("default_salary")
+                if pd.isna(salary) or salary == "":
+                    warnings.append("Default salary missing")
+                elif isinstance(salary, (int, float)) and salary > 200000:
+                    warnings.append("Unusually high salary")
+
+                if Employee.objects.filter(
+                    company=company,
+                    name=str(row.get("name", "")).strip()
+                ).exists():
+                    warnings.append("Employee with same name exists")
+
+                # ✅ CREATE DRAFT
                 EmployeeDraft.objects.create(
                     company=company,
                     emp_code=emp_code,
@@ -348,22 +409,40 @@ def upload_employee_drafts(request):
                     uan_number=uan,
                     esic_number=esic,
                     document_number=doc,
-                    default_salary=row.get("default_salary"),
+                    default_salary=salary,
                     joining_date=joining_date.date(),
                     created_by=request.user,
                 )
 
                 created += 1
 
-        # Store error report in session (for Excel download)
+                # 🟡 RECORD WARNINGS (PER ROW)
+                if warnings:
+                    warning_rows.append({
+                        "row_number": index + 2,
+                        "emp_code": emp_code,
+                        "warnings": warnings,
+                    })
+
+        # 📄 STORE ERROR REPORT
         if error_rows:
             request.session["employee_draft_upload_errors"] = error_rows
             messages.warning(
                 request,
-                "Some rows were skipped. You can download the error report for details."
+                "Some rows were skipped. You can download the error report."
             )
         else:
             request.session.pop("employee_draft_upload_errors", None)
+
+        # ⚠️ STORE WARNING REPORT
+        if warning_rows:
+            request.session["employee_draft_upload_warnings"] = warning_rows
+            messages.warning(
+                request,
+                f"{len(warning_rows)} drafts were created with warnings."
+            )
+        else:
+            request.session.pop("employee_draft_upload_warnings", None)
 
         messages.success(
             request,
@@ -373,6 +452,19 @@ def upload_employee_drafts(request):
         return redirect("employees:employee_draft_list")
 
     return render(request, "employees/employee_draft_upload.html")
+
+
+@staff_member_required
+def preview_employee_drafts(request):
+    preview = request.session.get("draft_upload_preview")
+    return render(request, "employees/employee_draft_preview.html", {
+        "preview": preview
+    })
+
+@staff_member_required
+def confirm_employee_drafts(request):
+    preview = request.session.get("draft_upload_preview")
+    # Save only rows with OK / WARNING
 
 
 def request_employee_change(request, employee_id):
@@ -553,3 +645,61 @@ def download_employee_draft_errors(request):
     df.to_excel(response, index=False)
 
     return response
+
+@staff_member_required
+def merge_employee_draft(request, draft_id):
+    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
+
+    # Find merge target (ESIC preferred, then UAN)
+    employee = None
+    if draft.esic_number:
+        employee = Employee.objects.filter(esic_number=draft.esic_number).first()
+
+    if not employee and draft.uan_number:
+        employee = Employee.objects.filter(uan_number=draft.uan_number).first()
+
+    if not employee:
+        messages.error(request, "No matching employee found for merge.")
+        return redirect("employees:employee_draft_approval_list")
+
+    # 🔁 Merge only EMPTY fields on Employee
+    merge_fields = [
+        "father_name",
+        "document_number",
+        "default_salary",
+        "exit_date",
+    ]
+
+    merged_fields = []
+
+    for field in merge_fields:
+        employee_value = getattr(employee, field, None)
+        draft_value = getattr(draft, field, None)
+
+        if not employee_value and draft_value:
+            setattr(employee, field, draft_value)
+            merged_fields.append(field)
+
+    employee.save()
+
+    # Mark draft as approved (merged)
+    draft.status = "APPROVED"
+    draft.save(update_fields=["status"])
+
+    # Audit log
+    AuditLog.objects.create(
+        action="EMPLOYEE_DRAFT_MERGED",
+        performed_by=request.user,
+        description=(
+            f"Draft {draft.emp_code} merged into "
+            f"employee {employee.emp_code}. "
+            f"Fields merged: {', '.join(merged_fields) or 'None'}"
+        )
+    )
+
+    messages.success(
+        request,
+        f"Draft {draft.emp_code} merged into employee {employee.emp_code}."
+    )
+
+    return redirect("employees:employee_draft_approval_list")
