@@ -4,26 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Salary & Bank Engine{% endblock %}</title>
+    <title>{% block title %}Salary Engine{% endblock %}</title>
 
     <style>
         :root {
-            --bg-primary: #f8fafc;
+            --bg-primary: #fafafa;
             --bg-secondary: #ffffff;
-            --text-primary: #0f172a;
-            --text-secondary: #475569;
-            --text-muted: #94a3b8;
+            --bg-hover: #f5f5f5;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666666;
+            --text-muted: #999999;
             --accent: #2563eb;
             --accent-hover: #1d4ed8;
+            --accent-light: rgba(37, 99, 235, 0.1);
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
-            --border: #e2e8f0;
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-            --shadow-lg: 0 10px 20px rgba(0,0,0,0.1);
+            --border: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+            --shadow-lg: 0 8px 24px rgba(0,0,0,0.08);
+            --radius: 10px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * {
@@ -33,379 +35,435 @@
         }
 
         body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
             background: var(--bg-primary);
             color: var(--text-primary);
-            line-height: 1.6;
             min-height: 100vh;
             display: flex;
             flex-direction: column;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Navbar */
+        /* ===== NAVBAR ===== */
         .navbar {
-            background: var(--bg-secondary);
-            padding: 0;
-            box-shadow: var(--shadow-md);
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
             position: sticky;
             top: 0;
             z-index: 1000;
-            border-bottom: 1px solid var(--border);
+            transition: var(--transition);
+        }
+
+        .navbar.scrolled {
+            box-shadow: var(--shadow-md);
         }
 
         .navbar-inner {
-            max-width: 1100px;
+            max-width: 1200px;
             margin: 0 auto;
-            padding: 0 24px;
+            padding: 0 32px;
+            height: 72px;
             display: flex;
             align-items: center;
-            height: 64px;
-        }
-
-        .nav-left {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1;
+            justify-content: space-between;
         }
 
         .brand {
             font-weight: 700;
-            font-size: 1.125em;
-            color: var(--accent);
-            margin-right: 32px;
+            font-size: 1.25rem;
+            color: var(--text-primary);
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 6px;
-            transition: opacity 0.2s;
+            gap: 8px;
+            transition: var(--transition);
+            position: relative;
+        }
+
+        .brand::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent);
+            transition: width 0.3s ease;
+        }
+
+        .brand:hover::after {
+            width: 100%;
         }
 
         .brand:hover {
-            opacity: 0.8;
+            transform: translateY(-1px);
         }
 
-        .nav-links {
+        .brand-icon {
+            font-size: 1.5rem;
+            filter: grayscale(20%);
+            transition: var(--transition);
+        }
+
+        .brand:hover .brand-icon {
+            filter: grayscale(0%);
+            transform: scale(1.1) rotate(-5deg);
+        }
+
+        .nav-left,
+        .nav-right {
             display: flex;
             align-items: center;
             gap: 4px;
         }
 
-        .navbar a:not(.brand) {
-            text-decoration: none;
-            color: var(--text-secondary);
-            font-weight: 500;
-            padding: 8px 14px;
-            border-radius: var(--radius-sm);
-            transition: all 0.2s;
-            font-size: 0.95em;
+        /* ===== DROPDOWNS ===== */
+        .dropdown {
+            position: relative;
         }
 
-        .navbar a:not(.brand):hover {
-            color: var(--accent);
-            background: rgba(37, 99, 235, 0.08);
-        }
-
-        .navbar a.active {
-            color: var(--accent);
-            background: rgba(37, 99, 235, 0.1);
-        }
-
-        /* Mobile Menu */
-        .mobile-toggle {
-            display: none;
+        .dropbtn {
             background: none;
             border: none;
-            font-size: 1.5em;
-            color: var(--text-primary);
-            cursor: pointer;
-            padding: 8px;
-        }
-
-        /* Layout */
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 32px 24px;
-            flex: 1;
-        }
-
-        /* Card */
-        .card {
-            background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
-            padding: 24px;
-            margin-bottom: 24px;
-            border: 1px solid var(--border);
-        }
-
-        /* Grid */
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 24px;
-        }
-
-        /* Buttons */
-        .btn {
-            background: var(--accent);
-            border: none;
-            color: white;
-            padding: 10px 18px;
-            border-radius: var(--radius-sm);
+            font: inherit;
+            color: var(--text-secondary);
+            padding: 10px 16px;
+            border-radius: var(--radius);
             cursor: pointer;
             font-weight: 500;
-            font-size: 0.95em;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
+            font-size: 0.95rem;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
+        .dropbtn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: var(--accent-light);
+            transform: translate(-50%, -50%);
+            transition: width 0.4s ease, height 0.4s ease;
         }
 
-        .btn:active {
-            transform: translateY(0);
+        .dropbtn:hover::before {
+            width: 200px;
+            height: 200px;
         }
 
-        .btn-secondary {
-            background: var(--text-secondary);
-        }
-
-        .btn-secondary:hover {
-            background: var(--text-primary);
-        }
-
-        .btn-success {
-            background: var(--success);
-        }
-
-        .btn-success:hover {
-            background: #059669;
-        }
-
-        .btn-outline {
-            background: transparent;
-            border: 2px solid var(--accent);
+        .dropbtn:hover {
             color: var(--accent);
+            background: var(--accent-light);
         }
 
-        .btn-outline:hover {
-            background: var(--accent);
-            color: white;
+        .dropbtn:active {
+            transform: scale(0.96);
         }
 
-        /* Table */
-        .table-container {
-            overflow-x: auto;
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
             background: var(--bg-secondary);
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
             border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
+            padding: 8px;
+            margin-top: 4px;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            z-index: 1001;
         }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
+        /* Add padding to bridge the gap */
+        .dropdown-content::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 0;
+            right: 0;
+            height: 8px;
+            background: transparent;
         }
 
-        thead {
-            background: var(--bg-primary);
-            border-bottom: 2px solid var(--border);
+        .dropdown-right {
+            right: 0;
+            left: auto;
         }
 
-        th {
-            padding: 12px 16px;
-            text-align: left;
-            font-weight: 600;
-            color: var(--text-secondary);
-            font-size: 0.875em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        td {
-            padding: 12px 16px;
-            border-bottom: 1px solid var(--border);
-            color: var(--text-primary);
-        }
-
-        tbody tr:hover {
-            background: rgba(37, 99, 235, 0.03);
-        }
-
-        tbody tr:last-child td {
-            border-bottom: none;
-        }
-
-        /* Forms */
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="number"],
-        input[type="date"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 10px 14px;
-            border: 2px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 0.95em;
-            transition: all 0.2s;
-            background: var(--bg-secondary);
-            color: var(--text-primary);
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-        }
-
-        label {
+        .dropdown:hover .dropdown-content {
             display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeInUp 0.3s ease;
+        }
+
+        /* Keep dropdown open when hovering over content */
+        .dropdown-content:hover {
+            display: block;
+            opacity: 1;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-content a {
+            display: block;
+            padding: 10px 14px;
+            text-decoration: none;
             color: var(--text-secondary);
-            font-size: 0.9em;
+            font-size: 0.93rem;
+            border-radius: 6px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
         }
 
-        .form-group {
-            margin-bottom: 20px;
+        .dropdown-content a::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
         }
 
-        /* Alerts */
+        .dropdown-content a:hover::before {
+            transform: scaleY(1);
+        }
+
+        .dropdown-content a:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        /* Logout button styling */
+        .logout-btn {
+            width: 100%;
+            display: block;
+            padding: 10px 14px;
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-size: 0.93rem;
+            border-radius: 6px;
+            transition: var(--transition);
+            position: relative;
+            overflow: hidden;
+            background: none;
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-family: inherit;
+        }
+
+        .logout-btn::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background: var(--accent);
+            transform: scaleY(0);
+            transition: transform 0.3s ease;
+        }
+
+        .logout-btn:hover::before {
+            transform: scaleY(1);
+        }
+
+        .logout-btn:hover {
+            background: var(--accent-light);
+            color: var(--accent);
+            transform: translateX(4px);
+        }
+
+        /* ===== CONTENT ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 48px 32px;
+            flex: 1;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ===== ALERTS ===== */
         .alert {
-            padding: 12px 16px;
-            border-radius: var(--radius-sm);
-            margin-bottom: 20px;
+            padding: 16px 20px;
+            border-radius: var(--radius);
+            margin-bottom: 24px;
             border-left: 4px solid;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            animation: slideInRight 0.4s ease;
+            box-shadow: var(--shadow-sm);
+            transition: var(--transition);
+        }
+
+        .alert:hover {
+            transform: translateX(4px);
+            box-shadow: var(--shadow-md);
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
 
         .alert-success {
             background: #d1fae5;
-            color: #065f46;
             border-color: var(--success);
+            color: #065f46;
         }
 
         .alert-warning {
             background: #fef3c7;
-            color: #92400e;
             border-color: var(--warning);
+            color: #92400e;
         }
 
         .alert-error,
         .alert-danger {
             background: #fee2e2;
-            color: #991b1b;
             border-color: var(--danger);
+            color: #991b1b;
         }
 
         .alert-info {
             background: #dbeafe;
-            color: #1e40af;
             border-color: var(--accent);
+            color: #1e40af;
         }
 
-        /* Badge */
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: 600;
-        }
-
-        .badge-success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .badge-warning {
-            background: #fef3c7;
-            color: #92400e;
-        }
-
-        .badge-danger {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        /* Footer */
+        /* ===== FOOTER ===== */
         footer {
             background: var(--bg-secondary);
-            padding: 20px;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.875em;
             border-top: 1px solid var(--border);
-            margin-top: auto;
+            text-align: center;
+            padding: 24px 32px;
+            font-size: 0.88rem;
+            color: var(--text-muted);
+            transition: var(--transition);
         }
 
-        /* Utilities */
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .mt-2 { margin-top: 16px; }
-        .mt-3 { margin-top: 24px; }
-        .mb-2 { margin-bottom: 16px; }
-        .mb-3 { margin-bottom: 24px; }
+        footer:hover {
+            color: var(--text-secondary);
+        }
 
-        /* Responsive */
+        /* ===== SELECTION ===== */
+        ::selection {
+            background: var(--accent);
+            color: white;
+        }
+
+        ::-moz-selection {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #d4d4d4;
+            border-radius: 10px;
+            border: 2px solid var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a3a3a3;
+        }
+
+        /* ===== FOCUS STYLES ===== */
+        button:focus-visible,
+        a:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
+        }
+
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
             .navbar-inner {
-                padding: 12px 16px;
-                height: auto;
-                flex-wrap: wrap;
+                padding: 0 20px;
+                height: 64px;
             }
 
-            .mobile-toggle {
-                display: block;
-                margin-left: auto;
+            .nav-left,
+            .nav-right {
+                gap: 2px;
             }
 
-            .nav-links {
-                display: none;
-                width: 100%;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 0;
-                margin-top: 12px;
-            }
-
-            .nav-links.show {
-                display: flex;
-            }
-
-            .navbar a:not(.brand) {
-                padding: 12px 16px;
-            }
-
-            .brand {
-                margin-right: 0;
+            .dropbtn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
             }
 
             .container {
-                padding: 20px 16px;
+                padding: 32px 20px;
             }
 
-            table {
-                font-size: 0.875em;
+            .brand {
+                font-size: 1.1rem;
             }
+        }
 
-            th, td {
-                padding: 8px 12px;
-            }
+        /* ===== LOADING ANIMATION ===== */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--accent-light);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 0.8s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ===== SMOOTH TRANSITIONS ===== */
+        * {
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 
@@ -414,85 +472,101 @@
 
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar">
-    <div class="navbar-inner">
-        <div class="nav-left">
-            <a href="/" class="brand">💼 Salary Engine</a>
+    <nav class="navbar" id="navbar">
+        <div class="navbar-inner">
 
-            <button class="mobile-toggle" onclick="toggleMenu()">☰</button>
+            <!-- LEFT -->
+            <div class="nav-left">
+                <a href="{% url 'dashboard:home' %}" class="brand">
+                    <span class="brand-icon">💼</span>
+                    <span>Salary Engine</span>
+                </a>
 
-            <div class="nav-links" id="navLinks">
-                <a href="{% url 'employees:employee_list' %}">Employees</a>
-                <a href="{% url 'dashboard:home' %}">Dashboard</a>
-                <a href="{% url 'payroll:salary_upload' %}">Upload Salary</a>
-                <a href="{% url 'banking:bank_response_upload' %}">Bank Response</a>
-                <a href="{% url 'banking:approval_queue' %}">Approvals</a>
+                {% if request.user.is_authenticated %}
+                    <div class="dropdown">
+                        <button class="dropbtn">Operations ▾</button>
+                        <div class="dropdown-content">
+                            <a href="{% url 'employees:employee_list' %}">Employees</a>
+                            <a href="#">Attendance</a>
+                            <a href="{% url 'payroll:salary_upload' %}">Payroll</a>
+                            <a href="{% url 'banking:bank_response_upload' %}">Bank</a>
+                            <a href="{% url 'banking:approval_queue' %}">Approvals</a>
+                        </div>
+                    </div>
 
-                {% if request.user.is_staff %}
-                    <a href="{% url 'employees:employee_draft_approval_list' %}">
-                        🛡 Employee Approvals
-                    </a>
-                {% else %}
-                    <a href="{% url 'employees:upload_employee_drafts' %}">
-                        📤 Bulk Employee Upload
-                    </a>
+                    <div class="dropdown">
+                        <button class="dropbtn">Reports ▾</button>
+                        <div class="dropdown-content">
+                            <a href="#">Salary Reports</a>
+                            <a href="#">PF / ESI</a>
+                            <a href="#">Ledger</a>
+                        </div>
+                    </div>
 
-                    <a href="{% url 'employees:employee_draft_approval_list' %}">
-                        🛡 Employee Drafts
-                    </a>
+                    <div class="dropdown">
+                        <button class="dropbtn">Export ▾</button>
+                        <div class="dropdown-content">
+                            <a href="#">Excel</a>
+                            <a href="#">CSV</a>
+                            <a href="#">Audit</a>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
 
+            <!-- RIGHT -->
+            <div class="nav-right">
+                {% if request.user.is_authenticated %}
+                    <div class="dropdown">
+                        <button class="dropbtn">
+                            {{ request.user.username }} ▾
+                        </button>
+                        <div class="dropdown-content dropdown-right">
+                            <a href="#">Profile</a>
+                            <a href="#">Settings</a>
+                            <form method="post" action="{% url 'logout' %}" style="margin: 0;">
+                                {% csrf_token %}
+                                <button type="submit" class="logout-btn">
+                                    Logout
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 {% endif %}
             </div>
 
         </div>
+    </nav>
+
+    <div class="container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
     </div>
-</nav>
 
-<!-- MESSAGES -->
-<div class="container">
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                <span>
-                    {% if message.tags == 'success' %}✓{% endif %}
-                    {% if message.tags == 'warning' %}⚠{% endif %}
-                    {% if message.tags == 'error' or message.tags == 'danger' %}✕{% endif %}
-                    {% if message.tags == 'info' %}ℹ{% endif %}
-                </span>
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
+    <footer>
+        © 2026 Salary Engine · Internal Payroll System
+    </footer>
 
-    {% block content %}{% endblock %}
-</div>
-
-
-<!-- FOOTER -->
-<footer>
-    © 2026 Salary Engine | Internal Payroll System
-</footer>
-
-<script>
-    // Mobile menu toggle
-    function toggleMenu() {
-        document.getElementById('navLinks').classList.toggle('show');
-    }
-
-    // Set active nav link
-    document.addEventListener('DOMContentLoaded', function() {
-        const path = window.location.pathname;
-        const links = document.querySelectorAll('.navbar a:not(.brand)');
-
-        links.forEach(link => {
-            if (link.getAttribute('href') === path) {
-                link.classList.add('active');
+    <script>
+        // Add scrolled class to navbar on scroll
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 10) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
             }
         });
-    });
-</script>
+    </script>
 
-{% block extra_js %}{% endblock %}
+    {% block extra_js %}{% endblock %}
+
 </body>
 </html>

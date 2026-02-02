@@ -6,4 +6,5 @@ app_name = "companies"
 urlpatterns = [
     path("create/", views.create_company, name="create_company"),
     path("register/", views.register, name="register"),
+    path("select/<int:company_id>/", views.select_company, name="select_company"),
 ]

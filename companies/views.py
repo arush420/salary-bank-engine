@@ -1,6 +1,6 @@
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 from django.db import transaction
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -51,12 +51,12 @@ def register(request):
         {"form": user_form}
     )
 
-
 @login_required
 def create_company(request):
-    # 🔒 Only Organisation Admin can create companies
-    if request.role != "ADMIN":
-        messages.error(request, "You are not allowed to create companies.")
+    org_user = OrganisationUser.objects.filter(user=request.user).first()
+
+    if not org_user:
+        messages.error(request, "Organisation not found for this user.")
         return redirect("dashboard:home")
 
     if request.method == "POST":
@@ -66,12 +66,36 @@ def create_company(request):
             messages.error(request, "Company name is required.")
             return redirect("companies:create_company")
 
-        Company.create_for_organisation(
-            organisation=request.organisation,
-            name=name
+        # Auto-generate serial_no per organisation
+        next_serial = (
+            Company.objects.filter(organisation=org_user.organisation)
+            .count() + 1
         )
 
-        messages.success(request, "Company created successfully.")
+        company = Company.objects.create(
+            organisation=org_user.organisation,
+            name=name,
+            serial_no=next_serial,
+        )
+
+        # Set this company as active
+        request.session["active_company_id"] = company.id
+
+        messages.success(request, f"Company '{company.name}' created successfully.")
         return redirect("dashboard:home")
 
     return render(request, "companies/create_company.html")
+
+@login_required
+def select_company(request, company_id):
+    company = get_object_or_404(
+        Company,
+        id=company_id,
+        organisation=request.organisation,
+        is_active=True
+    )
+
+    # 🔑 store active company in session
+    request.session["active_company_id"] = company.id
+
+    return redirect("dashboard:home")

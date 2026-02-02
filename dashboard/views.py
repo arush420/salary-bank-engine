@@ -18,6 +18,7 @@ from .utils import can_reverse_batch
 def home(request):
     return render(request, "dashboard/home.html")
 
+
 def salary_dashboard(request):
     today = date.today()
 
