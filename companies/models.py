@@ -33,28 +33,46 @@ class OrganisationUser(models.Model):
         return f"{self.user.username} → {self.organisation.name} ({self.role})"
 
 
+from django.db.models import Max
+from django.db import transaction
+
 class Company(models.Model):
     organisation = models.ForeignKey(
         Organisation,
         on_delete=models.CASCADE,
-        related_name="companies",
-        null = True,  # 👈 TEMPORARY
-        blank = True  # 👈 TEMPORARY
+        related_name="companies"
     )
     name = models.CharField(max_length=200)
-
     serial_no = models.PositiveIntegerField()
     is_active = models.BooleanField(default=True)
 
     class Meta:
         unique_together = ("organisation", "serial_no")
         ordering = ["serial_no"]
-        indexes = [
-            models.Index(fields=["organisation", "serial_no"]),
-        ]
 
     def __str__(self):
         return f"{self.serial_no}. {self.name}"
+
+    @staticmethod
+    def create_for_organisation(organisation, name):
+        """
+        Safely create company with next serial_no (per organisation)
+        """
+        with transaction.atomic():
+            last_serial = (
+                Company.objects
+                .filter(organisation=organisation)
+                .aggregate(Max("serial_no"))
+                ["serial_no__max"]
+            )
+            next_serial = (last_serial or 0) + 1
+
+            return Company.objects.create(
+                organisation=organisation,
+                name=name.strip(),
+                serial_no=next_serial
+            )
+
 
 
 class CompanyUser(models.Model):

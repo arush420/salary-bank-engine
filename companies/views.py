@@ -3,8 +3,11 @@ from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import redirect, render
 from django.db import transaction
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.contrib import messages
 
-from companies.models import Organisation, OrganisationUser
+from companies.models import Organisation, OrganisationUser, Company
 
 
 def register(request):
@@ -47,3 +50,28 @@ def register(request):
         "registration/register.html",
         {"form": user_form}
     )
+
+
+@login_required
+def create_company(request):
+    # 🔒 Only Organisation Admin can create companies
+    if request.role != "ADMIN":
+        messages.error(request, "You are not allowed to create companies.")
+        return redirect("dashboard:home")
+
+    if request.method == "POST":
+        name = request.POST.get("name")
+
+        if not name:
+            messages.error(request, "Company name is required.")
+            return redirect("companies:create_company")
+
+        Company.create_for_organisation(
+            organisation=request.organisation,
+            name=name
+        )
+
+        messages.success(request, "Company created successfully.")
+        return redirect("dashboard:home")
+
+    return render(request, "companies/create_company.html")

@@ -4,7 +4,7 @@ from . import views
 app_name = "dashboard"
 
 urlpatterns = [
-    path("", salary_dashboard, name="salary_dashboard"),
+    path("",  views.home, name="home"),
     path("list/<str:status>/", salary_status_list, name="salary_status_list"),
     path("employee/<int:employee_id>/", employee_salary_ledger, name="employee_salary_ledger"),
     path("reverse/<int:batch_id>/", views.reverse_batch_confirm, name="reverse_batch_confirm"),

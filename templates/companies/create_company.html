@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Create Company</h2>
+
+<form method="post">
+    {% csrf_token %}
+
+    <label>
+        <strong>Company Name</strong>
+    </label><br>
+    <input type="text"
+           name="name"
+           required
+           placeholder="e.g. Gurgaon Plant / Project A">
+
+    <br><br>
+
+    <button type="submit">Create Company</button>
+</form>
+{% endblock %}

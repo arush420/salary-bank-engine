@@ -1,5 +1,6 @@
 from datetime import date
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db import models
 from django.db.models import Sum
@@ -12,6 +13,10 @@ from payroll.models import (
     SalaryTransaction
 )
 from .utils import can_reverse_batch
+
+@login_required
+def home(request):
+    return render(request, "dashboard/home.html")
 
 def salary_dashboard(request):
     today = date.today()

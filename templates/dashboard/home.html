@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<p>Welcome, {{ request.user.username }} 👋</p>
+
+{% if request.company %}
+    <p><strong>Organisation:</strong> {{ request.company.organisation.name }}</p>
+    <p><strong>Company:</strong> {{ request.company.name }}</p>
+{% else %}
+    <p style="color:red;">
+        No company selected.
+    </p>
+{% endif %}
+
+{% endblock %}
