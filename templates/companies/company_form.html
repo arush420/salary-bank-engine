@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Register Company - Salary Engine{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 32px;
+        animation: slideInDown 0.4s ease;
+    }
+
+    @keyframes slideInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+    }
+
+    .page-subtitle {
+        color: var(--text-secondary);
+        font-size: 0.95rem;
+    }
+
+    .form-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 32px;
+        box-shadow: var(--shadow-md);
+        animation: fadeInUp 0.5s ease;
+        transition: var(--transition);
+    }
+
+    .form-card:hover {
+        box-shadow: var(--shadow-lg);
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 500;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        font-size: 0.93rem;
+    }
+
+    .form-label .required {
+        color: var(--danger);
+        margin-left: 4px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        font-size: 0.95rem;
+        font-family: inherit;
+        color: var(--text-primary);
+        background: var(--bg-primary);
+        transition: var(--transition);
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: var(--bg-secondary);
+        box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .form-control:hover:not(:focus) {
+        border-color: #d4d4d4;
+    }
+
+    .form-control.is-invalid {
+        border-color: var(--danger);
+    }
+
+    .form-control.is-invalid:focus {
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    }
+
+    textarea.form-control {
+        resize: vertical;
+        min-height: 100px;
+    }
+
+    select.form-control {
+        cursor: pointer;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 40px;
+        appearance: none;
+    }
+
+    .form-help {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .form-error {
+        display: block;
+        margin-top: 6px;
+        font-size: 0.88rem;
+        color: var(--danger);
+        animation: shake 0.4s ease;
+    }
+
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-4px); }
+        75% { transform: translateX(4px); }
+    }
+
+    .error-summary {
+        background: #fee2e2;
+        border: 1px solid var(--danger);
+        border-left: 4px solid var(--danger);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        animation: slideInRight 0.4s ease;
+    }
+
+    .error-summary-title {
+        font-weight: 600;
+        color: #991b1b;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .error-summary-list {
+        margin: 0;
+        padding-left: 20px;
+        color: #991b1b;
+    }
+
+    .error-summary-list li {
+        margin-bottom: 4px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: var(--radius);
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: var(--transition);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s ease, height 0.6s ease;
+    }
+
+    .btn:active::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-primary {
+        background: var(--accent);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+
+    .btn-secondary {
+        background: var(--bg-primary);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+        background: var(--bg-hover);
+        border-color: #d4d4d4;
+    }
+
+    .required-note {
+        margin-top: 24px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+        font-size: 0.88rem;
+        color: var(--text-muted);
+    }
+
+    .required-note .required {
+        color: var(--danger);
+    }
+
+    /* Loading state */
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    .btn:disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    @media (max-width: 768px) {
+        .form-card {
+            padding: 24px;
+        }
+
+        .page-title {
+            font-size: 1.6rem;
+        }
+
+        .form-actions {
+            flex-direction: column-reverse;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Register Company</h1>
+    <p class="page-subtitle">Add a new company to the payroll system</p>
+</div>
+
+<div class="form-card">
+    {% if form.errors %}
+    <div class="error-summary">
+        <div class="error-summary-title">
+            ⚠️ Please correct the following errors:
+        </div>
+        <ul class="error-summary-list">
+            {% for field in form %}
+                {% for error in field.errors %}
+                <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+            {% for error in form.non_field_errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {% for field in form %}
+        <div class="form-group">
+            <label for="{{ field.id_for_label }}" class="form-label">
+                {{ field.label }}
+                {% if field.field.required %}
+                <span class="required">*</span>
+                {% endif %}
+            </label>
+
+            {% if field.field.widget.input_type == 'textarea' %}
+            <textarea
+                name="{{ field.name }}"
+                class="form-control {% if field.errors %}is-invalid{% endif %}"
+                id="{{ field.id_for_label }}"
+                {% if field.field.required %}required{% endif %}
+                {% if field.field.widget.attrs.placeholder %}placeholder="{{ field.field.widget.attrs.placeholder }}"{% endif %}
+                rows="4">{{ field.value|default:'' }}</textarea>
+            {% elif field.field.widget.input_type == 'select' %}
+            <select
+                name="{{ field.name }}"
+                class="form-control {% if field.errors %}is-invalid{% endif %}"
+                id="{{ field.id_for_label }}"
+                {% if field.field.required %}required{% endif %}>
+                {% for value, label in field.field.choices %}
+                <option value="{{ value }}" {% if field.value == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+            {% else %}
+            <input
+                type="{{ field.field.widget.input_type }}"
+                name="{{ field.name }}"
+                class="form-control {% if field.errors %}is-invalid{% endif %}"
+                id="{{ field.id_for_label }}"
+                value="{{ field.value|default:'' }}"
+                {% if field.field.required %}required{% endif %}
+                {% if field.field.widget.attrs.placeholder %}placeholder="{{ field.field.widget.attrs.placeholder }}"{% endif %}>
+            {% endif %}
+
+            {% if field.help_text %}
+            <small class="form-help">{{ field.help_text }}</small>
+            {% endif %}
+
+            {% if field.errors %}
+            <span class="form-error">{{ field.errors.0 }}</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div class="form-actions">
+            <a href="{% url 'companies:company_list' %}" class="btn btn-secondary">
+                <span>✕</span>
+                Cancel
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <span>✓</span>
+                Register Company
+            </button>
+        </div>
+    </form>
+
+    <div class="required-note">
+        <span class="required">*</span> Required fields
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Add loading state to submit button
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const submitBtn = this.querySelector('.btn-primary');
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="loading"></span> Registering...';
+    });
+
+    // Auto-focus first input field with error, or first field
+    window.addEventListener('load', function() {
+        const firstError = document.querySelector('.form-control.is-invalid');
+        const firstInput = document.querySelector('.form-control');
+
+        if (firstError) {
+            firstError.focus();
+        } else if (firstInput) {
+            firstInput.focus();
+        }
+    });
+</script>
+{% endblock %}

@@ -6,8 +6,11 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 from django.contrib import messages
+from django.views.decorators.http import require_POST
 
+from companies.forms import CompanyForm
 from companies.models import Organisation, OrganisationUser, Company
+from companies.utils import get_user_organisation
 
 
 def register(request):
@@ -51,40 +54,119 @@ def register(request):
         {"form": user_form}
     )
 
+
 @login_required
-def create_company(request):
+def company_create(request):
+    """
+    Register a new company under the logged-in user's organisation
+    """
+    org_user = OrganisationUser.objects.get(user=request.user)
+
+    if request.method == "POST":
+        form = CompanyForm(request.POST)
+        if form.is_valid():
+            Company.create_for_organisation(
+                organisation=org_user.organisation,
+                **form.cleaned_data
+            )
+            messages.success(request, "Company registered successfully.")
+            return redirect("companies:company_list")
+    else:
+        form = CompanyForm()
+
+    return render(
+        request,
+        "companies/company_form.html",
+        {"form": form}
+    )
+
+
+@login_required
+def company_list(request):
+    """
+    List all companies under the logged-in user's organisation
+    """
+
     org_user = OrganisationUser.objects.filter(user=request.user).first()
 
     if not org_user:
-        messages.error(request, "Organisation not found for this user.")
-        return redirect("dashboard:home")
+        # Safety: user exists but not linked to organisation
+        return render(
+            request,
+            "companies/company_list.html",
+            {"companies": []}
+        )
+
+    companies = Company.objects.filter(
+        organisation=org_user.organisation
+    ).order_by("serial_no")
+
+    return render(
+        request,
+        "companies/company_list.html",
+        {"companies": companies}
+    )
+
+
+@login_required
+def company_detail(request, pk):
+    org_user = OrganisationUser.objects.filter(user=request.user).first()
+
+    company = get_object_or_404(
+        Company,
+        pk=pk,
+        organisation=org_user.organisation
+    )
+
+    return render(
+        request,
+        "companies/company_detail.html",
+        {"company": company}
+    )
+
+@login_required
+def company_edit(request, pk):
+    organisation = get_user_organisation(request.user)
+
+    company = get_object_or_404(
+        Company,
+        pk=pk,
+        organisation=organisation
+    )
 
     if request.method == "POST":
-        name = request.POST.get("name")
+        form = CompanyForm(request.POST, instance=company)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Company updated successfully.")
+            return redirect("companies:company_list")
+    else:
+        form = CompanyForm(instance=company)
 
-        if not name:
-            messages.error(request, "Company name is required.")
-            return redirect("companies:create_company")
+    return render(
+        request,
+        "companies/company_edit.html",
+        {
+            "company": company,
+            "form": form,
+        }
+    )
 
-        # Auto-generate serial_no per organisation
-        next_serial = (
-            Company.objects.filter(organisation=org_user.organisation)
-            .count() + 1
-        )
 
-        company = Company.objects.create(
-            organisation=org_user.organisation,
-            name=name,
-            serial_no=next_serial,
-        )
+@login_required
+@require_POST
+def company_delete(request, pk):
+    organisation = get_user_organisation(request.user)
 
-        # Set this company as active
-        request.session["active_company_id"] = company.id
+    company = get_object_or_404(
+        Company,
+        pk=pk,
+        organisation=organisation
+    )
 
-        messages.success(request, f"Company '{company.name}' created successfully.")
-        return redirect("dashboard:home")
+    company.delete()
+    return redirect("companies:company_list")
 
-    return render(request, "companies/create_company.html")
 
 @login_required
 def select_company(request, company_id):

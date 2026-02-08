@@ -1,0 +1,860 @@
+{% extends "base.html" %}
+
+{% block title %}Companies - Salary Engine{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Page Layout */
+    .page-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* Page Header */
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .header-content {
+        flex: 1;
+    }
+
+    .page-title {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .page-subtitle {
+        font-size: 0.9375rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        flex-shrink: 0;
+    }
+
+    /* Search Box */
+    .search-box {
+        position: relative;
+        min-width: 280px;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1rem;
+        pointer-events: none;
+    }
+
+    .search-input {
+        width: 100%;
+        padding: 0.75rem 1rem 0.75rem 2.75rem;
+        font-size: 0.9375rem;
+        font-family: inherit;
+        color: var(--text-primary);
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+
+    .search-input::placeholder {
+        color: var(--text-muted);
+    }
+
+    .search-input:hover {
+        border-color: #d4d4d4;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+        background: var(--bg-primary);
+        box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    /* Clear Search Button */
+    .clear-search {
+        position: absolute;
+        right: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        background: transparent;
+        border: none;
+        color: var(--text-muted);
+        cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1.125rem;
+        line-height: 1;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .clear-search.visible {
+        opacity: 1;
+    }
+
+    .clear-search:hover {
+        color: var(--danger);
+    }
+
+    /* Button Styles */
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.5rem;
+        font-size: 0.9375rem;
+        font-weight: 500;
+        border: none;
+        border-radius: var(--radius);
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.25);
+        transform: translate(-50%, -50%);
+        transition: width 0.5s ease, height 0.5s ease;
+    }
+
+    .btn:active::before {
+        width: 250px;
+        height: 250px;
+    }
+
+    .btn-primary {
+        background: var(--accent);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+
+    .btn-primary:active {
+        transform: translateY(0);
+    }
+
+    /* Stats Bar */
+    .stats-bar {
+        display: flex;
+        gap: 1.5rem;
+        padding: 1.25rem 1.5rem;
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 1.5rem;
+        animation: slideRight 0.4s ease-out;
+    }
+
+    @keyframes slideRight {
+        from {
+            opacity: 0;
+            transform: translateX(-15px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--accent-light);
+        border-radius: var(--radius);
+        font-size: 1.5rem;
+    }
+
+    .stat-content {
+        display: flex;
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+
+    .stat-label {
+        font-size: 0.8125rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+
+    .stat-value {
+        font-size: 1.625rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+
+    /* Table Container */
+    .table-container {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        animation: fadeUp 0.5s ease-out;
+    }
+
+    @keyframes fadeUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Table Styles */
+    .companies-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .companies-table thead {
+        background: var(--bg-primary);
+        border-bottom: 2px solid var(--border);
+    }
+
+    .companies-table th {
+        padding: 1rem 1.25rem;
+        text-align: left;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .companies-table th:first-child {
+        width: 80px;
+    }
+
+    .companies-table th:last-child {
+        width: 240px;
+    }
+
+    .companies-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: all 0.2s ease;
+        animation: fadeIn 0.3s ease-out;
+        animation-fill-mode: both;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    .companies-table tbody tr:hover {
+        background: var(--bg-hover);
+        transform: translateX(4px);
+    }
+
+    .companies-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .companies-table td {
+        padding: 1rem 1.25rem;
+        vertical-align: middle;
+    }
+
+    .company-serial {
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.9375rem;
+    }
+
+    .company-name {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+    }
+
+    .company-name-text {
+        font-size: 0.9375rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
+
+    .company-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.625rem;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .company-status.active {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .company-status.inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-dot {
+        width: 0.375rem;
+        height: 0.375rem;
+        border-radius: 50%;
+        background: currentColor;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem 0.875rem;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+        white-space: nowrap;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .action-btn-view {
+        color: var(--accent);
+        background: var(--accent-light);
+    }
+
+    .action-btn-view:hover {
+        background: var(--accent);
+        color: white;
+    }
+
+    .action-btn-edit {
+        color: #d97706;
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .action-btn-edit:hover {
+        background: #d97706;
+        color: white;
+    }
+
+    .action-btn-delete {
+        color: var(--danger);
+        background: transparent;
+        border-color: var(--border);
+    }
+
+    .action-btn-delete:hover {
+        background: var(--danger);
+        color: white;
+        border-color: var(--danger);
+    }
+
+    /* Empty State */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 4rem 2rem;
+        text-align: center;
+        background: var(--bg-secondary);
+        border: 2px dashed var(--border);
+        border-radius: var(--radius);
+        animation: fadeIn 0.5s ease-out;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+
+    .empty-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .empty-description {
+        font-size: 0.9375rem;
+        color: var(--text-muted);
+        margin: 0 0 1.5rem 0;
+        max-width: 400px;
+    }
+
+    /* No Results State */
+    .no-results {
+        display: none;
+        padding: 3rem 2rem;
+        text-align: center;
+        background: var(--bg-secondary);
+        border-radius: var(--radius);
+    }
+
+    .no-results.visible {
+        display: block;
+    }
+
+    .no-results-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.4;
+    }
+
+    .no-results-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin: 0 0 0.5rem 0;
+    }
+
+    .no-results-text {
+        font-size: 0.9375rem;
+        color: var(--text-muted);
+        margin: 0;
+    }
+
+    /* Loading State */
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+
+    .loading-overlay.visible {
+        display: flex;
+    }
+
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+        .page-header {
+            flex-wrap: wrap;
+        }
+
+        .header-actions {
+            width: 100%;
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        .search-box {
+            min-width: 100%;
+        }
+
+        .btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .page-title {
+            font-size: 1.625rem;
+        }
+
+        .stats-bar {
+            flex-direction: column;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        .companies-table {
+            min-width: 600px;
+        }
+
+        .companies-table th,
+        .companies-table td {
+            padding: 0.75rem 0.875rem;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+            gap: 0.375rem;
+            align-items: stretch;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-container {
+            padding: 0 1rem;
+        }
+
+        .stats-bar {
+            padding: 1rem;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 1.25rem;
+        }
+
+        .stat-value {
+            font-size: 1.375rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <h1 class="page-title">Companies</h1>
+            <p class="page-subtitle">Manage your registered companies</p>
+        </div>
+        <div class="header-actions">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input
+                    type="text"
+                    id="searchInput"
+                    class="search-input"
+                    placeholder="Search companies..."
+                    autocomplete="off">
+                <button type="button" class="clear-search" id="clearSearch" aria-label="Clear search">
+                    ✕
+                </button>
+            </div>
+            <a href="{% url 'companies:company_create' %}" class="btn btn-primary">
+                <span>➕</span>
+                <span>Register Company</span>
+            </a>
+        </div>
+    </div>
+
+    {% if companies %}
+        <!-- Stats Bar -->
+        <div class="stats-bar">
+            <div class="stat-item">
+                <div class="stat-icon">🏢</div>
+                <div class="stat-content">
+                    <span class="stat-label">Total Companies</span>
+                    <span class="stat-value" id="totalCount">{{ companies|length }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="table-container">
+            <table class="companies-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Company Name</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="companiesTableBody">
+                    {% for company in companies %}
+                        <tr class="company-row" data-company-name="{{ company.name|lower }}">
+                            <td>
+                                <span class="company-serial">{{ company.serial_no }}</span>
+                            </td>
+                            <td>
+                                <div class="company-name">
+                                    <span class="company-name-text">{{ company.name }}</span>
+                                    {% if company.is_active %}
+                                        <span class="company-status active">
+                                            <span class="status-dot"></span>
+                                            Active
+                                        </span>
+                                    {% else %}
+                                        <span class="company-status inactive">
+                                            <span class="status-dot"></span>
+                                            Inactive
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="action-buttons">
+                                    <a href="{% url 'companies:company_detail' company.id %}" class="action-btn action-btn-view">
+                                        <span>👁️</span>
+                                        <span>View</span>
+                                    </a>
+                                    <a href="{% url 'companies:company_edit' company.id %}" class="action-btn action-btn-edit">
+                                        <span>✏️</span>
+                                        <span>Edit</span>
+                                    </a>
+                                    <form method="post"
+                                          action="{% url 'companies:company_delete' company.id %}"
+                                          class="delete-form"
+                                          style="display: inline;">
+                                        {% csrf_token %}
+                                        <button type="submit" class="action-btn action-btn-delete">
+                                            <span>🗑️</span>
+                                            <span>Delete</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- No Results State -->
+        <div class="no-results" id="noResults">
+            <div class="no-results-icon">🔍</div>
+            <h3 class="no-results-title">No companies found</h3>
+            <p class="no-results-text">Try adjusting your search terms</p>
+        </div>
+    {% else %}
+        <!-- Empty State -->
+        <div class="empty-state">
+            <div class="empty-icon">🏢</div>
+            <h2 class="empty-title">No Companies Yet</h2>
+            <p class="empty-description">
+                Get started by registering your first company to the payroll system.
+            </p>
+            <a href="{% url 'companies:company_create' %}" class="btn btn-primary">
+                <span>➕</span>
+                <span>Register Your First Company</span>
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Search functionality
+    const searchInput = document.getElementById('searchInput');
+    const clearSearchBtn = document.getElementById('clearSearch');
+    const tableBody = document.getElementById('companiesTableBody');
+    const totalCount = document.getElementById('totalCount');
+    const noResults = document.getElementById('noResults');
+    const tableContainer = document.querySelector('.table-container');
+
+    if (searchInput && tableBody) {
+        // Search input handler
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            const rows = tableBody.querySelectorAll('.company-row');
+            let visibleCount = 0;
+
+            // Show/hide clear button
+            clearSearchBtn.classList.toggle('visible', searchTerm.length > 0);
+
+            // Filter rows
+            rows.forEach(row => {
+                const companyName = row.getAttribute('data-company-name');
+                const isMatch = companyName.includes(searchTerm);
+
+                row.style.display = isMatch ? '' : 'none';
+                if (isMatch) visibleCount++;
+            });
+
+            // Update count
+            if (totalCount) {
+                totalCount.textContent = visibleCount;
+            }
+
+            // Show/hide no results message
+            if (noResults && tableContainer) {
+                if (visibleCount === 0 && searchTerm.length > 0) {
+                    tableContainer.style.display = 'none';
+                    noResults.classList.add('visible');
+                } else {
+                    tableContainer.style.display = '';
+                    noResults.classList.remove('visible');
+                }
+            }
+        });
+
+        // Clear search button handler
+        if (clearSearchBtn) {
+            clearSearchBtn.addEventListener('click', function() {
+                searchInput.value = '';
+                searchInput.dispatchEvent(new Event('input'));
+                searchInput.focus();
+            });
+        }
+
+        // Keyboard shortcut: Ctrl/Cmd + K to focus search
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+
+            // Escape to clear search
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                if (searchInput.value) {
+                    searchInput.value = '';
+                    searchInput.dispatchEvent(new Event('input'));
+                } else {
+                    searchInput.blur();
+                }
+            }
+        });
+    }
+
+    // Add stagger animation to table rows
+    document.addEventListener('DOMContentLoaded', function() {
+        const rows = document.querySelectorAll('.company-row');
+        rows.forEach((row, index) => {
+            row.style.animationDelay = `${index * 0.03}s`;
+        });
+    });
+
+    // Delete confirmation
+    const deleteForms = document.querySelectorAll('.delete-form');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    deleteForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Get company name from the row
+            const row = this.closest('.company-row');
+            const companyName = row.querySelector('.company-name-text').textContent;
+
+            // Confirm deletion
+            const confirmMessage = `Are you sure you want to delete "${companyName}"?\n\nThis action cannot be undone and will permanently remove all associated data.`;
+
+            if (confirm(confirmMessage)) {
+                // Show loading overlay
+                if (loadingOverlay) {
+                    loadingOverlay.classList.add('visible');
+                }
+
+                // Submit the form
+                this.submit();
+            }
+        });
+    });
+
+    // Prevent double form submission
+    document.querySelectorAll('form').forEach(form => {
+        let submitted = false;
+        form.addEventListener('submit', function(e) {
+            if (submitted) {
+                e.preventDefault();
+                return false;
+            }
+            submitted = true;
+        });
+    });
+
+    // Add tooltip for keyboard shortcut
+    if (searchInput) {
+        searchInput.setAttribute('title', 'Press Ctrl+K to focus (Cmd+K on Mac)');
+    }
+</script>
+{% endblock %}

@@ -484,6 +484,14 @@
 
                 {% if request.user.is_authenticated %}
                     <div class="dropdown">
+                        <button class="dropbtn">Company ▾</button>
+                        <div class="dropdown-content">
+                            <a href="{% url 'companies:company_create' %}">Register Company</a>
+                            <a href="{% url 'companies:company_list' %}">List</a>
+                        </div>
+                    </div>
+
+                    <div class="dropdown">
                         <button class="dropbtn">Operations ▾</button>
                         <div class="dropdown-content">
                             <a href="{% url 'employees:employee_list' %}">Employees</a>
