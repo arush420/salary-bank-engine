@@ -87,9 +87,19 @@ def employee_profile(request, employee_id):
 def employee_draft_create(request):
     if request.method == "POST":
         form = EmployeeDraftForm(request.POST)
+
+        company_id = request.POST.get("company")
+        if not company_id:
+            messages.error(request, "Please select a company.")
+            return redirect("employees:employee_draft_create")
+
+        company = get_object_or_404(Company, id=company_id)
+
         if form.is_valid():
             draft = form.save(commit=False)
+            draft.company = company          # 🔑 REQUIRED
             draft.created_by = request.user
+            draft.status = "PENDING"
             draft.save()
 
             messages.success(
@@ -100,11 +110,17 @@ def employee_draft_create(request):
     else:
         form = EmployeeDraftForm()
 
+    companies = Company.objects.order_by("name")
+
     return render(
         request,
         "employees/employee_draft_form.html",
-        {"form": form}
+        {
+            "form": form,
+            "companies": companies,
+        }
     )
+
 
 
 @login_required
@@ -116,7 +132,7 @@ def employee_draft_list(request):
         {"drafts": drafts}
     )
 
-@staff_member_required
+@login_required
 def employee_draft_approval_list(request):
     drafts = EmployeeDraft.objects.filter(status="PENDING").select_related("company")
 
@@ -171,7 +187,7 @@ def employee_draft_approval_list(request):
 
 from django.db import IntegrityError
 
-@staff_member_required
+@login_required
 def approve_employee_draft(request, draft_id):
     draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
 
@@ -241,7 +257,7 @@ def approve_employee_draft(request, draft_id):
 
 
 
-@staff_member_required
+@login_required
 def reject_employee_draft(request, draft_id):
     draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
 
@@ -281,13 +297,8 @@ def download_employee_draft_template(request):
     df.to_excel(response, index=False)
     return response
 
-from django.contrib.admin.views.decorators import staff_member_required
-from django.db import transaction
-from django.shortcuts import redirect, render
-from django.contrib import messages
-import pandas as pd
 
-@staff_member_required
+@login_required
 def upload_employee_drafts(request):
     if request.method == "POST":
         file = request.FILES.get("file")
@@ -454,14 +465,14 @@ def upload_employee_drafts(request):
     return render(request, "employees/employee_draft_upload.html")
 
 
-@staff_member_required
+@login_required
 def preview_employee_drafts(request):
     preview = request.session.get("draft_upload_preview")
     return render(request, "employees/employee_draft_preview.html", {
         "preview": preview
     })
 
-@staff_member_required
+@login_required
 def confirm_employee_drafts(request):
     preview = request.session.get("draft_upload_preview")
     # Save only rows with OK / WARNING
@@ -542,7 +553,7 @@ def apply_employee_change(request, request_id):
 
     return redirect("employees:employee_profile", employee_id=employee.id)
 
-@staff_member_required
+@login_required
 def approve_employee_change(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     change_requests = employee.change_requests.filter(status="PENDING")
@@ -602,7 +613,7 @@ def approve_employee_change(request, employee_id):
 
     return redirect("employees:employee_profile", employee.id)
 
-@staff_member_required
+@login_required
 def reject_employee_change(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     change_requests = employee.change_requests.filter(status="PENDING")
@@ -627,7 +638,7 @@ def reject_employee_change(request, employee_id):
     return redirect("employees:employee_profile", employee.id)
 
 
-@staff_member_required
+@login_required
 def download_employee_draft_errors(request):
     errors = request.session.get("employee_draft_upload_errors")
 
@@ -646,7 +657,7 @@ def download_employee_draft_errors(request):
 
     return response
 
-@staff_member_required
+@login_required
 def merge_employee_draft(request, draft_id):
     draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
 

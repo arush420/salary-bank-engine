@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Approvals{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Pending Approvals</h2>
+
+<div class="row g-4">
+
+  <!-- ========================= -->
+  <!-- EMPLOYEE DRAFT APPROVALS -->
+  <!-- ========================= -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header fw-bold">
+        Employee Drafts
+        {% if employee_drafts %}
+          <span class="badge bg-primary float-end">
+            {{ employee_drafts|length }}
+          </span>
+        {% endif %}
+      </div>
+
+      <div class="card-body d-flex flex-column">
+        {% if employee_drafts %}
+          <ul class="list-group list-group-flush mb-3">
+            {% for d in employee_drafts %}
+              <li class="list-group-item">
+                {{ d.emp_code }} – {{ d.name }}
+              </li>
+            {% endfor %}
+          </ul>
+
+          <a href="{% url 'employees:employee_draft_approval_list' %}"
+             class="btn btn-sm btn-primary mt-auto">
+            Review Drafts
+          </a>
+        {% else %}
+          <p class="text-muted mb-0">No pending drafts</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================= -->
+  <!-- PROFILE CHANGE APPROVALS -->
+  <!-- ========================= -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header fw-bold">
+        Profile Changes
+        {% if employee_changes %}
+          <span class="badge bg-warning text-dark float-end">
+            {{ employee_changes|length }}
+          </span>
+        {% endif %}
+      </div>
+
+      <div class="card-body d-flex flex-column">
+        {% if employee_changes %}
+          <ul class="list-group list-group-flush mb-3">
+            {% for c in employee_changes %}
+              <li class="list-group-item">
+                {{ c.employee.emp_code }} – {{ c.employee.name }}
+              </li>
+            {% endfor %}
+          </ul>
+
+          <a href="{% url 'employees:employee_list' %}"
+             class="btn btn-sm btn-warning mt-auto">
+            Review Profile Changes
+          </a>
+        {% else %}
+          <p class="text-muted mb-0">No pending profile changes</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================= -->
+  <!-- BANK CHANGE APPROVALS -->
+  <!-- ========================= -->
+  <div class="col-md-4">
+    <div class="card h-100">
+      <div class="card-header fw-bold">
+        Bank Changes
+        {% if bank_changes %}
+          <span class="badge bg-info text-dark float-end">
+            {{ bank_changes|length }}
+          </span>
+        {% endif %}
+      </div>
+
+      <div class="card-body d-flex flex-column">
+        {% if bank_changes %}
+          <ul class="list-group list-group-flush mb-3">
+            {% for b in bank_changes %}
+              <li class="list-group-item">
+                {{ b.employee.emp_code }} – {{ b.employee.name }}
+              </li>
+            {% endfor %}
+          </ul>
+
+          <a href="{% url 'banking:bank_change_approval_list' %}"
+             class="btn btn-sm btn-info mt-auto">
+            Review Bank Requests
+          </a>
+        {% else %}
+          <p class="text-muted mb-0">No pending bank requests</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,17 +1,97 @@
 {% extends "base.html" %}
+
 {% block content %}
+<div class="container mt-4">
 
-<h2>Add Employee (Draft)</h2>
+  <!-- 🔗 Quick Navigation -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Add Employee (Draft)</h4>
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
+    <div class="d-flex gap-2">
+      <a href="{% url 'employees:employee_list' %}" class="btn btn-outline-secondary btn-sm">
+        Employee List
+      </a>
 
-    <button type="submit">Submit for Approval</button>
-</form>
+      <a href="{% url 'employees:employee_draft_approval_list' %}"
+         class="btn btn-outline-primary btn-sm">
+        Approval Queue
+      </a>
+    </div>
+  </div>
 
-<a href="{% url 'employees:employee_draft_list' %}">
-    ← Back to Drafts
-</a>
+  <div class="card">
+    <div class="card-body">
 
+      <form method="post">
+        {% csrf_token %}
+
+        <div class="row g-3">
+
+          <div class="col-md-4">
+            <label class="form-label">Company *</label>
+            <select name="company" class="form-select" required>
+              <option value="">Select Company</option>
+              {% for c in companies %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Employee Code *</label>
+            {{ form.emp_code }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Name *</label>
+            {{ form.name }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Father Name</label>
+            {{ form.father_name }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Joining Date *</label>
+            {{ form.joining_date }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Default Salary</label>
+            {{ form.default_salary }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">UAN Number</label>
+            {{ form.uan_number }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">ESIC Number</label>
+            {{ form.esic_number }}
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Document Number</label>
+            {{ form.document_number }}
+          </div>
+
+        </div>
+
+        <div class="mt-4 d-flex justify-content-between">
+          <a href="{% url 'employees:employee_list' %}" class="btn btn-secondary">
+            Back to Employees
+          </a>
+
+          <button class="btn btn-primary">
+            Submit for Approval
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+</div>
 {% endblock %}

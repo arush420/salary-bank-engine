@@ -1,4 +1,5 @@
 from datetime import date
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -6,19 +7,53 @@ from django.db import models
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
-from employees.models import Employee
+from employees.models import (
+    Employee,
+    EmployeeDraft,
+    EmployeeChangeRequest,
+)
+from banking.models import BankChangeRequest
 from payroll.models import (
     SalaryBatch,
     SalaryBatchReversal,
-    SalaryTransaction
+    SalaryTransaction,
 )
+
 from .utils import can_reverse_batch
 
+
+# -------------------------------------------------
+# DASHBOARD HOME
+# -------------------------------------------------
 @login_required
 def home(request):
-    return render(request, "dashboard/home.html")
+    context = {
+        "active_employees": Employee.objects.filter(
+            exit_date__isnull=True
+        ).count()
+    }
+
+    # Show approvals only to staff (for now)
+    if request.user.is_staff:
+        context.update({
+            "pending_employee_drafts": EmployeeDraft.objects.filter(
+                status="PENDING"
+            ).count(),
+            "pending_profile_changes": EmployeeChangeRequest.objects.filter(
+                status="PENDING"
+            ).count(),
+            "pending_bank_changes": BankChangeRequest.objects.filter(
+                status="PENDING"
+            ).count(),
+        })
+
+    return render(request, "dashboard/home.html", context)
 
 
+# -------------------------------------------------
+# SALARY DASHBOARD
+# -------------------------------------------------
+@login_required
 def salary_dashboard(request):
     today = date.today()
 
@@ -30,7 +65,6 @@ def salary_dashboard(request):
         year=year
     ).first()
 
-    # Base context (always available)
     context = {
         "month": month,
         "year": year,
@@ -44,8 +78,8 @@ def salary_dashboard(request):
 
     qs = SalaryTransaction.objects.filter(batch=batch)
 
-    # Stats
-    context["stats"] = {"pending": qs.filter(status="PENDING").count(),
+    context["stats"] = {
+        "pending": qs.filter(status="PENDING").count(),
         "hold": qs.filter(status="HOLD").count(),
         "processed": qs.filter(status="PROCESSED").count(),
         "failed": qs.filter(status="FAILED").count(),
@@ -55,7 +89,6 @@ def salary_dashboard(request):
         "processed_amount": qs.filter(
             status="PROCESSED"
         ).aggregate(total=Sum("salary_amount"))["total"] or 0,
-
         "hold_amount": qs.filter(
             status="HOLD"
         ).aggregate(total=Sum("salary_amount"))["total"] or 0,
@@ -64,6 +97,10 @@ def salary_dashboard(request):
     return render(request, "dashboard/salary_dashboard.html", context)
 
 
+# -------------------------------------------------
+# SALARY STATUS LIST
+# -------------------------------------------------
+@login_required
 def salary_status_list(request, status):
     month = int(request.GET.get("month"))
     year = int(request.GET.get("year"))
@@ -73,7 +110,7 @@ def salary_status_list(request, status):
         year=year
     ).first()
 
-    transactions = []
+    transactions = SalaryTransaction.objects.none()
 
     if batch:
         transactions = SalaryTransaction.objects.select_related(
@@ -93,9 +130,12 @@ def salary_status_list(request, status):
     return render(request, "dashboard/salary_status_list.html", context)
 
 
-
+# -------------------------------------------------
+# EMPLOYEE SALARY LEDGER
+# -------------------------------------------------
+@login_required
 def employee_salary_ledger(request, employee_id):
-    employee = Employee.objects.get(id=employee_id)
+    employee = get_object_or_404(Employee, id=employee_id)
 
     transactions = SalaryTransaction.objects.filter(
         employee=employee
@@ -125,7 +165,6 @@ def employee_salary_ledger(request, employee_id):
         ),
     )
 
-    # Replace None with 0
     totals = {k: v or 0 for k, v in totals.items()}
 
     context = {
@@ -140,6 +179,11 @@ def employee_salary_ledger(request, employee_id):
         context
     )
 
+
+# -------------------------------------------------
+# SALARY BATCH REVERSAL
+# -------------------------------------------------
+@login_required
 def reverse_batch_confirm(request, batch_id):
     batch = get_object_or_404(SalaryBatch, id=batch_id)
 
@@ -173,3 +217,26 @@ def reverse_batch_confirm(request, batch_id):
         "dashboard/reverse_batch_confirm.html",
         {"batch": batch}
     )
+
+
+# -------------------------------------------------
+# APPROVALS DASHBOARD (ONE-STOP)
+# -------------------------------------------------
+@login_required
+def approvals_dashboard(request):
+    if not request.user.is_staff:
+        raise PermissionDenied
+
+    context = {
+        "employee_drafts": EmployeeDraft.objects.filter(
+            status="PENDING"
+        )[:10],
+        "employee_changes": EmployeeChangeRequest.objects.filter(
+            status="PENDING"
+        )[:10],
+        "bank_changes": BankChangeRequest.objects.filter(
+            status="PENDING"
+        )[:10],
+    }
+
+    return render(request, "dashboard/approvals.html", context)

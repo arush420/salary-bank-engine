@@ -20,32 +20,12 @@ class Employee(models.Model):
     father_name = models.CharField(max_length=200, blank=True)
 
     # Statutory identifiers (optional but unique if present)
-    uan_number = models.CharField(
-        max_length=20,
-        unique=True,
-        null=True,
-        blank=True
-    )
-    esic_number = models.CharField(
-        max_length=20,
-        unique=True,
-        null=True,
-        blank=True
-    )
-    document_number = models.CharField(
-        max_length=50,
-        unique=True,
-        null=True,
-        blank=True
-    )
+    uan_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    esic_number = models.CharField(max_length=20, unique=True, null=True, blank=True)
+    document_number = models.CharField(max_length=50, unique=True, null=True, blank=True)
 
     # Default salary reference (actual salary generated elsewhere)
-    default_salary = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
+    default_salary = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     joining_date = models.DateField()
     exit_date = models.DateField(null=True, blank=True)
@@ -53,17 +33,16 @@ class Employee(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     # Admin who approved this employee
-    approved_by = models.ForeignKey(
-        User,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="approved_employees"
-    )
+    approved_by = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="approved_employees")
 
     class Meta:
         unique_together = ("company", "emp_code")
         ordering = ["emp_code"]
+
+    @property
+    def status(self):
+        return "Left" if self.exit_date else "Active"
 
     def __str__(self):
         return f"{self.emp_code} - {self.name}"
