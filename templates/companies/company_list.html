@@ -686,14 +686,13 @@
                                     </a>
                                     <form method="post"
                                           action="{% url 'companies:company_delete' company.id %}"
-                                          class="delete-form"
-                                          style="display: inline;">
-                                        {% csrf_token %}
-                                        <button type="submit" class="action-btn action-btn-delete">
-                                            <span>🗑️</span>
-                                            <span>Delete</span>
-                                        </button>
+                                          onsubmit="return confirmHardDelete();">
+                                      {% csrf_token %}
+                                      <button class="btn btn-danger">
+                                        🧨 Delete Company (TEST – ALL DATA)
+                                      </button>
                                     </form>
+
                                 </div>
                             </td>
                         </tr>
@@ -856,5 +855,19 @@
     if (searchInput) {
         searchInput.setAttribute('title', 'Press Ctrl+K to focus (Cmd+K on Mac)');
     }
+
+    function confirmHardDelete() {
+      return confirm(
+        "TEST MODE ONLY!\n\n" +
+        "This will DELETE:\n" +
+        "- Employees\n" +
+        "- Drafts\n" +
+        "- Salaries\n" +
+        "- Bank Data\n\n" +
+        "This action CANNOT be undone.\n\n" +
+        "Continue?"
+      );
+    }
+
 </script>
 {% endblock %}

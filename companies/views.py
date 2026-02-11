@@ -1,5 +1,6 @@
 from django.contrib.auth import login
 from django.contrib.auth.forms import UserCreationForm
+from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect, render, get_object_or_404
 from django.db import transaction
 from django.contrib import messages
@@ -8,9 +9,17 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.views.decorators.http import require_POST
 
+from banking.models import BankChangeRequest
 from companies.forms import CompanyForm
 from companies.models import Organisation, OrganisationUser, Company
 from companies.utils import get_user_organisation
+from django.conf import settings
+
+from employees.models import EmployeeDraft, Employee, EmployeeChangeRequest
+from payroll.models import SalaryBatch, SalaryTransaction
+
+if not settings.DEBUG:
+    raise PermissionDenied("Hard delete disabled in production")
 
 
 def register(request):
@@ -164,7 +173,37 @@ def company_delete(request, pk):
         organisation=organisation
     )
 
+    # ----------------------------
+    # HARD DELETE (TEST MODE)
+    # ----------------------------
+
+    # 1️⃣ Employee Drafts
+    EmployeeDraft.objects.filter(company=company).delete()
+
+    # 2️⃣ Employees + related data
+    employees = Employee.objects.filter(company=company)
+
+    # Profile change requests
+    EmployeeChangeRequest.objects.filter(employee__in=employees).delete()
+
+    # Bank change requests
+    BankChangeRequest.objects.filter(employee__in=employees).delete()
+
+    # Salary data
+    SalaryTransaction.objects.filter(employee__in=employees).delete()
+    SalaryBatch.objects.filter(company=company).delete()
+
+    # Employees
+    employees.delete()
+
+    # 3️⃣ Finally delete company
     company.delete()
+
+    messages.success(
+        request,
+        f"Company '{company.name}' and ALL related data deleted (TEST MODE)."
+    )
+
     return redirect("companies:company_list")
 
 
