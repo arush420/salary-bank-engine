@@ -25,6 +25,11 @@ urlpatterns = [
     # =========================
     path("drafts/", views.employee_draft_list, name="employee_draft_list"),
     path("drafts/new/", views.employee_draft_create, name="employee_draft_create"),
+    path(
+    "drafts/template/",
+    views.download_employee_draft_template,
+    name="download_employee_draft_template"
+),
 
     # Admin-only approvals
     path(
@@ -42,6 +47,13 @@ urlpatterns = [
         views.reject_employee_draft,
         name="reject_employee_draft"
     ),
+
+    path(
+        "<int:employee_id>/delete/",
+        views.delete_employee,
+        name="employee_delete"
+    ),
+
 
     # =========================
     # BULK UPLOAD

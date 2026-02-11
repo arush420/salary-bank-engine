@@ -275,28 +275,33 @@ def reject_employee_draft(request, draft_id):
 
 
 
+@login_required
 def download_employee_draft_template(request):
-    columns = [
-        "emp_code",
-        "name",
-        "father_name",
-        "uan_number",
-        "esic_number",
-        "document_number",
-        "default_salary",
-        "joining_date",
-    ]
+    last = EmployeeDraft.objects.order_by("-created_at").first()
 
-    df = pd.DataFrame(columns=columns)
+    data = [{
+        "Company": last.company.name if last else "",
+        "Employee Code": last.emp_code if last else "",
+        "Name": last.name if last else "",
+        "Father Name": last.father_name if last else "",
+        "Joining Date": last.joining_date if last else "",
+        "Default Salary": last.default_salary if last else "",
+        "UAN Number": last.uan_number if last else "",
+        "ESIC Number": last.esic_number if last else "",
+        "Document Number": last.document_number if last else "",
+    }]
+
+    df = pd.DataFrame(data)
 
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
     response["Content-Disposition"] = "attachment; filename=employee_draft_template.xlsx"
 
-    df.to_excel(response, index=False)
-    return response
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Draft Template")
 
+    return response
 
 @login_required
 def upload_employee_drafts(request):
@@ -714,3 +719,29 @@ def merge_employee_draft(request, draft_id):
     )
 
     return redirect("employees:employee_draft_approval_list")
+
+@login_required
+def delete_employee(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+
+    # HARD SAFETY CHECKS
+    if SalaryTransaction.objects.filter(employee=employee).exists():
+        messages.error(request, "Cannot delete employee with salary records.")
+        return redirect("employees:employee_profile", employee.id)
+
+    if EmployeeBankAccount.objects.filter(employee=employee).exists():
+        messages.error(request, "Cannot delete employee with bank records.")
+        return redirect("employees:employee_profile", employee.id)
+
+    if request.method == "POST":
+        AuditLog.objects.create(
+            action="EMPLOYEE_DELETED",
+            performed_by=request.user,
+            description=f"Employee {employee.emp_code} deleted"
+        )
+
+        employee.delete()
+        messages.success(request, "Employee deleted permanently.")
+        return redirect("employees:employee_list")
+
+    return redirect("employees:employee_profile", employee.id)

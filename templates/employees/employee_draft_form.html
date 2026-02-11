@@ -94,4 +94,39 @@
     </div>
   </div>
 </div>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">Add Employee (Draft)</h4>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'employees:employee_list' %}"
+           class="btn btn-outline-secondary btn-sm">
+            Employee List
+        </a>
+
+        <a href="{% url 'employees:employee_draft_approval_list' %}"
+           class="btn btn-outline-primary btn-sm">
+            Approval Queue
+        </a>
+    </div>
+</div>
+
+<div class="alert alert-info d-flex justify-content-between align-items-center">
+    <div>
+        <strong>Bulk Upload Available</strong><br>
+        Download a pre-filled draft template (last entry included) and upload multiple employees at once.
+    </div>
+
+    <div class="d-flex gap-2">
+        <a href="{% url 'employees:download_employee_draft_template' %}"
+           class="btn btn-sm btn-outline-primary">
+            ⬇ Download Draft Template
+        </a>
+
+        <a href="{% url 'employees:upload_employee_drafts' %}"
+           class="btn btn-sm btn-primary">
+            📤 Bulk Upload
+        </a>
+    </div>
+</div>
+
 {% endblock %}

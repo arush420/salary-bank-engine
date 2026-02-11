@@ -4,7 +4,7 @@
 {% block content %}
 <h2>Employees</h2>
 
-<div class="mb-3">
+<div class="mb-3 d-flex gap-2">
     {% if not request.user.is_staff %}
         <a class="btn btn-success"
            href="{% url 'employees:upload_employee_drafts' %}">
@@ -13,34 +13,51 @@
     {% endif %}
 
     {% if request.user.is_staff %}
-        <a class="btn btn-outline"
+        <a class="btn btn-outline-primary"
            href="{% url 'employees:employee_draft_approval_list' %}">
             🛡 Employee Approvals
         </a>
     {% endif %}
 </div>
 
+<div class="table-responsive">
+<table class="table table-bordered table-hover align-middle">
+    <thead class="table-light">
+        <tr>
+            <th>Emp Code</th>
+            <th>Name</th>
+            <th>Status</th>
+            <th class="text-center">Profile</th>
+        </tr>
+    </thead>
 
-<table style="width:100%; background:white; border-collapse:collapse; margin-top:20px;">
-    <tr style="background:#f0f0f0;">
-        <th>Emp Code</th>
-        <th>Name</th>
-        <th>Status</th>
-        <th>Profile</th>
-    </tr>
-
-    {% for e in employees %}
-    <tr style="border-bottom:1px solid #ddd;">
-        <td>{{ e.emp_code }}</td>
-        <td>{{ e.name }}</td>
-        <td>{{ emp.status }}</td>
-
-        <td>
-            <a href="{% url 'employees:employee_profile' e.id %}">
-                View
-            </a>
-        </td>
-    </tr>
-    {% endfor %}
+    <tbody>
+        {% for e in employees %}
+        <tr>
+            <td>{{ e.emp_code }}</td>
+            <td>{{ e.name }}</td>
+            <td>
+                {% if e.exit_date %}
+                    <span class="badge bg-secondary">Left</span>
+                {% else %}
+                    <span class="badge bg-success">Active</span>
+                {% endif %}
+            </td>
+            <td class="text-center">
+                <a href="{% url 'employees:employee_profile' e.id %}"
+                   class="btn btn-sm btn-outline-primary">
+                    View
+                </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="text-center text-muted">
+                No employees found
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
 </table>
+</div>
 {% endblock %}

@@ -3,6 +3,8 @@
 
 {% block content %}
 
+{% with DELETE_ENABLED=True %}
+
 <!-- Back Navigation -->
 <a href="{% url 'employees:employee_list' %}" class="text-decoration-none">
   ← Back to Employees
@@ -14,15 +16,18 @@
 <div class="card mt-3 mb-4">
   <div class="card-body">
     <div class="d-flex justify-content-between align-items-start">
-      <!-- Left: Employee Info -->
+
       <div>
         <h3 class="mb-2">
-          Name: {{ employee.name }}
+          {{ employee.name }}
           <small class="text-muted">({{ employee.emp_code }})</small>
         </h3>
 
         <div class="mb-2">
-          <span class="badge bg-primary me-2">Company: {{ employee.company.name }}</span>
+          <span class="badge bg-primary me-2">
+            Company: {{ employee.company.name }}
+          </span>
+
           {% if employee.exit_date %}
             <span class="badge bg-secondary">Inactive</span>
           {% else %}
@@ -38,13 +43,13 @@
         </div>
       </div>
 
-      <!-- Right: Action Button -->
       <div>
         <a href="{% url 'employees:employee_change_request' employee.id %}"
            class="btn btn-outline-secondary">
           ✏️ Request Profile Edit
         </a>
       </div>
+
     </div>
   </div>
 </div>
@@ -196,6 +201,36 @@
 {% endif %}
 
 <!-- =========================
+     DANGER ZONE (TEST MODE)
+========================= -->
+{% if DELETE_ENABLED %}
+<hr>
+<div class="card border-danger mb-4">
+  <div class="card-header bg-danger text-white fw-semibold">
+    ⚠ Danger Zone (TEST MODE)
+  </div>
+
+  <div class="card-body">
+    <p class="mb-2">
+      <strong>TEST MODE ENABLED.</strong><br>
+      Deletion is currently allowed for all users.
+    </p>
+
+    <form method="post"
+          action="{% url 'employees:employee_delete' employee.id %}">
+      {% csrf_token %}
+      <button class="btn btn-danger"
+              onclick="return confirm(
+                'TEST MODE:\n\nThis will permanently delete the employee.\n\nContinue?'
+              )">
+        🗑 Delete Employee (Test)
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- =========================
      ERROR REPORT
 ========================= -->
 {% if request.session.employee_draft_upload_errors %}
@@ -207,4 +242,5 @@
 </div>
 {% endif %}
 
+{% endwith %}
 {% endblock %}
