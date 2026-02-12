@@ -1,5 +1,6 @@
 from django.contrib.auth.models import User
-from django.db import models
+from django.db import models, transaction
+from django.db.models import Max
 
 
 class Organisation(models.Model):
@@ -33,11 +34,6 @@ class OrganisationUser(models.Model):
         return f"{self.user.username} → {self.organisation.name} ({self.role})"
 
 
-from django.db.models import Max
-from django.db import transaction
-
-from django.db import models, transaction
-from django.db.models import Max
 
 class Company(models.Model):
     organisation = models.ForeignKey(
@@ -46,13 +42,18 @@ class Company(models.Model):
         related_name="companies"
     )
 
-    # Core
-    serial_no = models.PositiveIntegerField()
+    # Site Code (Auto increment per organisation)
+    site_code = models.PositiveIntegerField()
+
     name = models.CharField(max_length=200)
 
     # Address & GST
     address = models.TextField(blank=True)
-    gst_number = models.CharField(max_length=15, blank=True, help_text="15-character GSTIN")
+    gst_number = models.CharField(
+        max_length=15,
+        blank=True,
+        help_text="15-character GSTIN"
+    )
 
     # Contact Person
     contact_name = models.CharField(max_length=150, blank=True)
@@ -62,22 +63,32 @@ class Company(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ("organisation", "serial_no")
-        ordering = ["serial_no"]
+        unique_together = ("organisation", "site_code")
+        ordering = ["site_code"]
 
     def __str__(self):
-        return f"{self.serial_no}. {self.name}"
+        return f"{self.site_code}. {self.name}"
 
     @staticmethod
     def create_for_organisation(organisation, **data):
         """
-        Safely create company with auto-increment serial_no per organisation
+        Auto-increment site_code per organisation
         """
-        with transaction.atomic():
-            last_serial = (Company.objects.filter(organisation=organisation).aggregate(Max("serial_no"))["serial_no__max"])
-            next_serial = (last_serial or 0) + 1
 
-            return Company.objects.create(organisation=organisation, serial_no=next_serial, **data)
+        with transaction.atomic():
+            last = (
+                Company.objects
+                .filter(organisation=organisation)
+                .aggregate(Max("site_code"))["site_code__max"]
+            )
+
+            next_code = (last or 0) + 1
+
+            return Company.objects.create(
+                organisation=organisation,
+                site_code=next_code,
+                **data
+            )
 
 
 class CompanyUser(models.Model):

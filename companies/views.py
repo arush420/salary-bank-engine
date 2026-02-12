@@ -108,7 +108,7 @@ def company_list(request):
 
     companies = Company.objects.filter(
         organisation=org_user.organisation
-    ).order_by("serial_no")
+    ).order_by("site_code")
 
     return render(
         request,
@@ -161,6 +161,9 @@ def company_edit(request, pk):
         }
     )
 
+
+if not settings.DEBUG:
+    raise PermissionDenied("Hard delete disabled in production")
 
 @login_required
 @require_POST

@@ -13,7 +13,7 @@
 
     <p>
         <strong>Active Company:</strong>
-        {{ request.company.serial_no }}. {{ request.company.name }}
+        {{ request.company.site_code }}. {{ request.company.name }}
     </p>
 
 {# If NO company is selected, show the selection list #}
@@ -28,7 +28,7 @@
             {% for company in request.available_companies %}
                 <li>
                     <a href="{% url 'companies:select_company' company.id %}">
-                        {{ company.serial_no }}. {{ company.name }}
+                        {{ company.site_code }}. {{ company.name }}
                     </a>
                 </li>
             {% empty %}
@@ -36,7 +36,7 @@
                     No companies created yet.
                     {% if request.role == "ADMIN" %}
                         <br>
-                        <a href="{% url 'companies:create_company' %}">
+                        <a href="{% url 'companies:company_create' %}">
                             ➕ Create your first company
                         </a>
                     {% endif %}

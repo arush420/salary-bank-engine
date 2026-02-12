@@ -30,7 +30,7 @@ class CompanyContextMiddleware:
                         organisation=org_user.organisation,
                         is_active=True
                     )
-                    .order_by("serial_no")
+                    .order_by("site_code")
                 )
 
         return self.get_response(request)

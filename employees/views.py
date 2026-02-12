@@ -277,18 +277,28 @@ def reject_employee_draft(request, draft_id):
 
 @login_required
 def download_employee_draft_template(request):
-    last = EmployeeDraft.objects.order_by("-created_at").first()
+    from companies.models import Company
+
+    org = request.user.organisation_user.organisation
+
+    # Get last draft within same organisation
+    last = (
+        EmployeeDraft.objects
+        .filter(company__organisation=org)
+        .order_by("-created_at")
+        .first()
+    )
 
     data = [{
-        "Company": last.company.name if last else "",
-        "Employee Code": last.emp_code if last else "",
-        "Name": last.name if last else "",
-        "Father Name": last.father_name if last else "",
-        "Joining Date": last.joining_date if last else "",
-        "Default Salary": last.default_salary if last else "",
-        "UAN Number": last.uan_number if last else "",
-        "ESIC Number": last.esic_number if last else "",
-        "Document Number": last.document_number if last else "",
+        "site_code": last.company.site_code if last else "",
+        "emp_code": last.emp_code if last else "",
+        "name": last.name if last else "",
+        "father_name": last.father_name if last else "",
+        "joining_date": last.joining_date if last else "",
+        "default_salary": last.default_salary if last else "",
+        "uan_number": last.uan_number if last else "",
+        "esic_number": last.esic_number if last else "",
+        "document_number": last.document_number if last else "",
     }]
 
     df = pd.DataFrame(data)
@@ -303,8 +313,11 @@ def download_employee_draft_template(request):
 
     return response
 
+
 @login_required
 def upload_employee_drafts(request):
+    from companies.models import Company
+
     if request.method == "POST":
         file = request.FILES.get("file")
 
@@ -315,6 +328,7 @@ def upload_employee_drafts(request):
         df = pd.read_excel(file)
 
         required_columns = {
+            "site_code",
             "emp_code",
             "name",
             "father_name",
@@ -332,8 +346,7 @@ def upload_employee_drafts(request):
             )
             return redirect("employees:upload_employee_drafts")
 
-        # ✅ ENFORCE COMPANY FROM LOGGED-IN USER
-        company = request.user.company
+        org = request.user.organisation_user.organisation
 
         created = 0
         skipped = 0
@@ -342,11 +355,13 @@ def upload_employee_drafts(request):
 
         with transaction.atomic():
             for index, row in df.iterrows():
+
                 emp_code = str(row.get("emp_code", "")).strip()
+                site_code = row.get("site_code")
 
                 def skip(reason):
                     error_rows.append({
-                        "row_number": index + 2,  # Excel header = row 1
+                        "row_number": index + 2,
                         "emp_code": emp_code or "—",
                         "reason": reason,
                     })
@@ -354,6 +369,17 @@ def upload_employee_drafts(request):
                 if not emp_code:
                     skipped += 1
                     skip("Employee code missing")
+                    continue
+
+                # 🔹 Validate site_code
+                try:
+                    company = Company.objects.get(
+                        site_code=int(site_code),
+                        organisation=org
+                    )
+                except (Company.DoesNotExist, ValueError, TypeError):
+                    skipped += 1
+                    skip("Invalid site_code")
                     continue
 
                 # Normalize identifiers
@@ -364,7 +390,7 @@ def upload_employee_drafts(request):
                 # 🔴 HARD BLOCKS
                 if Employee.objects.filter(company=company, emp_code=emp_code).exists():
                     skipped += 1
-                    skip("Employee code already exists")
+                    skip("Employee code already exists in this company")
                     continue
 
                 if esic and Employee.objects.filter(esic_number=esic).exists():
@@ -414,7 +440,7 @@ def upload_employee_drafts(request):
                     company=company,
                     name=str(row.get("name", "")).strip()
                 ).exists():
-                    warnings.append("Employee with same name exists")
+                    warnings.append("Employee with same name exists in this company")
 
                 # ✅ CREATE DRAFT
                 EmployeeDraft.objects.create(
@@ -432,7 +458,6 @@ def upload_employee_drafts(request):
 
                 created += 1
 
-                # 🟡 RECORD WARNINGS (PER ROW)
                 if warnings:
                     warning_rows.append({
                         "row_number": index + 2,
@@ -440,23 +465,16 @@ def upload_employee_drafts(request):
                         "warnings": warnings,
                     })
 
-        # 📄 STORE ERROR REPORT
+        # Store reports
         if error_rows:
             request.session["employee_draft_upload_errors"] = error_rows
-            messages.warning(
-                request,
-                "Some rows were skipped. You can download the error report."
-            )
+            messages.warning(request, "Some rows were skipped.")
         else:
             request.session.pop("employee_draft_upload_errors", None)
 
-        # ⚠️ STORE WARNING REPORT
         if warning_rows:
             request.session["employee_draft_upload_warnings"] = warning_rows
-            messages.warning(
-                request,
-                f"{len(warning_rows)} drafts were created with warnings."
-            )
+            messages.warning(request, f"{len(warning_rows)} drafts created with warnings.")
         else:
             request.session.pop("employee_draft_upload_warnings", None)
 
