@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}{{ status }} Banking {% endblock %}
+{% block title %}{{ status }} Banking{% endblock %}
+
 {% block content %}
 
 <h2>Bank Change Requests</h2>
@@ -10,7 +11,7 @@
     <th>New Bank</th>
     <th>Account</th>
     <th>IFSC</th>
-    <th>Effective Month</th>
+    <th>Effective From</th>
     <th>Action</th>
 </tr>
 
@@ -20,9 +21,13 @@
     <td>{{ r.new_bank_name }}</td>
     <td>{{ r.new_account_number }}</td>
     <td>{{ r.new_ifsc }}</td>
-    <td>{{ r.effective_from_month }}</td>
     <td>
-        <a href="/bank/approve/{{ r.id }}/">Approve</a>
+        {{ r.get_effective_month_display }} {{ r.effective_year }}
+    </td>
+    <td>
+        <a href="{% url 'banking:approve_bank_change' r.id %}">
+            Approve
+        </a>
     </td>
 </tr>
 {% empty %}

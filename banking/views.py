@@ -4,7 +4,7 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 from django.utils.timezone import now
 from django.db import transaction
-
+from datetime import date
 import pandas as pd
 
 from payroll.models import SalaryBatch, SalaryTransaction
@@ -14,50 +14,69 @@ from .models import BankChangeRequest
 from banking.models import EmployeeBankAccount
 from payroll.utils import release_salary_holds
 
-# ---------------------------
-# BANK CHANGE APPROVAL
-# ---------------------------
+
+# =====================================================
+# BANK CHANGE APPROVAL QUEUE
+# =====================================================
 
 def approval_queue(request):
     requests = BankChangeRequest.objects.filter(status="PENDING")
     return render(request, "banking/approval_queue.html", {"requests": requests})
 
 
+# =====================================================
+# APPROVE BANK CHANGE REQUEST
+# =====================================================
+
 def approve_request(request, id):
     req = get_object_or_404(BankChangeRequest, id=id)
 
     if req.status != "PENDING":
-        return redirect("approval_queue")
+        return redirect("banking:bank_change_approval_list")
 
     with transaction.atomic():
+
+        # Deactivate old active account
         EmployeeBankAccount.objects.filter(
             employee=req.employee,
             is_active=True
         ).update(is_active=False)
 
+        # Convert month/year → first day of month
+        effective_date = date(
+            req.effective_year,
+            req.effective_month,
+            1
+        )
+
+        # Create new bank account
         EmployeeBankAccount.objects.create(
             employee=req.employee,
             bank_name=req.new_bank_name,
             account_number=req.new_account_number,
             ifsc=req.new_ifsc,
-            effective_from_month=req.effective_from_month,
+            effective_from_month=effective_date,
             is_active=True,
-            approved_by=None,  # auth disabled for now
+            approved_by=request.user,
             approved_at=now()
         )
 
+        # Update request status
         req.status = "APPROVED"
+        req.approved_by = request.user
         req.approved_at = now()
-        req.save(update_fields=["status", "approved_at"])
+        req.save(update_fields=["status", "approved_by", "approved_at"])
 
+        # Release salary holds
         release_salary_holds(req.employee)
 
-    return redirect("approval_queue")
+    messages.success(request, "Bank change approved successfully.")
+    return redirect("banking:bank_change_approval_list")
 
 
-# ---------------------------
+# =====================================================
 # BANK RESPONSE (UTR) UPLOAD
-# ---------------------------
+# =====================================================
 
 def upload_bank_response(request):
     if request.method == "POST":
@@ -122,13 +141,11 @@ def upload_bank_response(request):
                     txn.bank_response_at = now()
                     txn.save()
 
-                # ✅ AUTO COMPLETE BATCH
-                pending_exists = SalaryTransaction.objects.filter(
+                # Auto-complete batch if no pending transactions
+                if not SalaryTransaction.objects.filter(
                     batch=batch,
                     status="PENDING"
-                ).exists()
-
-                if not pending_exists:
+                ).exists():
                     batch.status = "COMPLETED"
                     batch.save(update_fields=["status"])
 
@@ -144,18 +161,16 @@ def upload_bank_response(request):
         {"form": form}
     )
 
-# ---------------------------
-# Retry Failed BANK Transactions
-# ---------------------------
+
+# =====================================================
+# RETRY FAILED TRANSACTIONS
+# =====================================================
+
 def retry_failed_transactions(request, batch_id):
     batch = get_object_or_404(SalaryBatch, id=batch_id)
 
-    # 🔒 HARD BLOCKS
     if batch.status == "REVERSED":
-        messages.error(
-            request,
-            "This batch was reversed and cannot be retried."
-        )
+        messages.error(request, "This batch was reversed and cannot be retried.")
         return redirect("dashboard:salary_dashboard")
 
     if batch.status not in ["EXPORTED", "COMPLETED"]:
@@ -171,10 +186,7 @@ def retry_failed_transactions(request, batch_id):
     )
 
     if not failed_txns.exists():
-        messages.info(
-            request,
-            "No failed transactions found to retry."
-        )
+        messages.info(request, "No failed transactions found to retry.")
         return redirect("dashboard:salary_dashboard")
 
     with transaction.atomic():
@@ -188,7 +200,6 @@ def retry_failed_transactions(request, batch_id):
                 status="PENDING",
             )
 
-        # Re-open batch for bank export
         batch.status = "EXPORTED"
         batch.save(update_fields=["status"])
 
@@ -199,13 +210,14 @@ def retry_failed_transactions(request, batch_id):
 
     return redirect("dashboard:salary_dashboard")
 
-# ---------------------------
-# BANK Account Export File
-# ---------------------------
 
+# =====================================================
+# EXPORT BANK FILE
+# =====================================================
 
 def export_bank_file(request, month, year):
-    # TODO: replace with request.user.company
+
+    # TODO: Replace with request.user.company when multi-company isolation is done
     company = Company.objects.first()
 
     batch = get_object_or_404(
@@ -215,19 +227,14 @@ def export_bank_file(request, month, year):
         year=year
     )
 
-    # 🔒 HARD BLOCK — reversed batch
     if batch.status == "REVERSED":
         raise PermissionDenied("Reversed batch cannot be exported")
 
-    # 🔒 BLOCK duplicate exports
     if batch.status != "DRAFT":
         raise PermissionDenied("Batch already exported or closed")
 
-    # ✅ Export + lock atomically
     with transaction.atomic():
-        # (Here you will generate CSV / Excel file)
-        # generate_bank_file(batch)
-
+        # TODO: Generate actual bank file here
         batch.status = "EXPORTED"
         batch.save(update_fields=["status"])
 

@@ -67,7 +67,7 @@ class Company(models.Model):
         ordering = ["site_code"]
 
     def __str__(self):
-        return f"{self.site_code}. {self.name}"
+        return f"[{self.site_code}]{self.name}"
 
     @staticmethod
     def create_for_organisation(organisation, **data):

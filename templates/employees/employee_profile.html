@@ -84,10 +84,7 @@
 <div class="card mb-4">
   <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
     <span>Bank Accounts</span>
-    <a href="{% url 'employees:bank_change' employee.id %}"
-       class="btn btn-sm btn-outline-primary">
-      ➕ Request Bank Change
-    </a>
+
   </div>
 
   <div class="card-body">
@@ -144,7 +141,8 @@
     {% else %}
       <p class="text-muted">No bank history found.</p>
     {% endif %}
-  </div>
+    <hr>
+
 </div>
 
 <!-- =========================

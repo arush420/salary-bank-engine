@@ -46,9 +46,31 @@ def employee_list(request):
     )
 
 
+@login_required
 def employee_profile(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
+    # --------------------------
+    # Handle Bank Change Submit
+    # --------------------------
+    if request.method == "POST":
+        bank_form = BankChangeRequestForm(request.POST)
+
+        if bank_form.is_valid():
+            bank_request = bank_form.save(commit=False)
+            bank_request.employee = employee
+            bank_request.submitted_by = request.user   # ✅ FIXED
+            bank_request.status = "PENDING"
+            bank_request.save()
+
+            messages.success(request, "Bank change request submitted for approval.")
+            return redirect(request.path)
+    else:
+        bank_form = BankChangeRequestForm()
+
+    # --------------------------
+    # Existing Logic
+    # --------------------------
     latest_salary = SalaryTransaction.objects.filter(
         employee=employee
     ).order_by("-created_at").first()
@@ -59,12 +81,10 @@ def employee_profile(request, employee_id):
 
     active_account = bank_accounts.filter(is_active=True).first()
 
-    # ✅ Audit timeline
     audit_logs = AuditLog.objects.filter(
         description__icontains=employee.emp_code
     ).order_by("-created_at")
 
-    # ✅ THIS IS THE MISSING PIECE
     pending_changes = employee.change_requests.filter(status="PENDING")
 
     context = {
@@ -73,7 +93,8 @@ def employee_profile(request, employee_id):
         "bank_accounts": bank_accounts,
         "active_account": active_account,
         "audit_logs": audit_logs,
-        "pending_changes": pending_changes,  # 🔥 USED IN TEMPLATE
+        "pending_changes": pending_changes,
+        "bank_form": bank_form,
     }
 
     return render(
