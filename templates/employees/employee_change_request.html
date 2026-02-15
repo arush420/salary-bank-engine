@@ -3,120 +3,312 @@
 
 <div class="container mt-4">
 
-  <div class="card shadow-sm">
+  <!-- ============================================= -->
+  <!-- PROFILE CHANGE REQUEST -->
+  <!-- ============================================= -->
+  <div class="card shadow-sm mb-4">
     <div class="card-header bg-warning-subtle">
-      <h4 class="mb-0">Request Employee Change</h4>
-      <small class="text-muted">
-        All changes require admin approval
-      </small>
+      <h5 class="mb-0"><i class="bi bi-person-fill-gear me-2"></i>Profile Change Request</h5>
+      <small class="text-muted">Update employee basic information</small>
     </div>
 
     <div class="card-body">
-
       <form method="post">
         {% csrf_token %}
-
-        <!-- ========================= -->
-        <!-- BASIC DETAILS -->
-        <!-- ========================= -->
-        <h6 class="fw-bold mb-3">Basic Information</h6>
+        <input type="hidden" name="form_type" value="profile_change">
 
         <div class="row g-3">
 
+          <!-- Employee Code (Read-only) -->
           <div class="col-md-6">
-            <label class="form-label">Name</label>
-            <input type="text" class="form-control"
-                   name="name" value="{{ employee.name }}">
+            <label for="emp_code" class="form-label fw-semibold">Employee Code</label>
+            <input type="text"
+                   id="emp_code"
+                   class="form-control bg-light"
+                   name="emp_code"
+                   value="{{ employee.emp_code }}"
+                   readonly>
           </div>
 
+          <!-- Name (Required) -->
           <div class="col-md-6">
-            <label class="form-label">Father Name</label>
-            <input type="text" class="form-control"
-                   name="father_name" value="{{ employee.father_name }}">
+            <label for="name" class="form-label fw-semibold">
+              Name <span class="text-danger">*</span>
+            </label>
+            <input type="text"
+                   id="name"
+                   class="form-control"
+                   name="name"
+                   value="{{ employee.name }}"
+                   required>
           </div>
 
-          <div class="col-md-4">
-            <label class="form-label">UAN</label>
-            <input type="text" class="form-control"
-                   name="uan_number" value="{{ employee.uan_number }}">
+          <!-- Father Name -->
+          <div class="col-md-6">
+            <label for="father_name" class="form-label fw-semibold">Father Name</label>
+            <input type="text"
+                   id="father_name"
+                   class="form-control"
+                   name="father_name"
+                   value="{{ employee.father_name|default_if_none:'' }}">
           </div>
 
-          <div class="col-md-4">
-            <label class="form-label">ESIC</label>
-            <input type="text" class="form-control"
-                   name="esic_number" value="{{ employee.esic_number }}">
+          <!-- Joining Date -->
+          <div class="col-md-6">
+            <label for="joining_date" class="form-label fw-semibold">Joining Date</label>
+            <input type="date"
+                   id="joining_date"
+                   class="form-control"
+                   name="joining_date"
+                   value="{% if employee.joining_date %}{{ employee.joining_date|date:'Y-m-d' }}{% endif %}">
           </div>
 
+          <!-- UAN Number -->
           <div class="col-md-4">
-            <label class="form-label">Document Number</label>
-            <input type="text" class="form-control"
-                   name="document_number" value="{{ employee.document_number }}">
+            <label for="uan_number" class="form-label fw-semibold">UAN Number</label>
+            <input type="text"
+                   id="uan_number"
+                   class="form-control"
+                   name="uan_number"
+                   value="{{ employee.uan_number|default_if_none:'' }}"
+                   maxlength="12"
+                   pattern="\d{12}"
+                   placeholder="12-digit UAN">
           </div>
 
+          <!-- ESIC Number -->
           <div class="col-md-4">
-            <label class="form-label">Default Salary</label>
-            <input type="number" step="0.01"
+            <label for="esic_number" class="form-label fw-semibold">ESIC Number</label>
+            <input type="text"
+                   id="esic_number"
+                   class="form-control"
+                   name="esic_number"
+                   value="{{ employee.esic_number|default_if_none:'' }}"
+                   maxlength="17"
+                   pattern="\d{17}"
+                   placeholder="17-digit ESIC">
+          </div>
+
+          <!-- Document Number -->
+          <div class="col-md-4">
+            <label for="document_number" class="form-label fw-semibold">Document Number</label>
+            <input type="text"
+                   id="document_number"
+                   class="form-control"
+                   name="document_number"
+                   value="{{ employee.document_number|default_if_none:'' }}">
+          </div>
+
+          <!-- Default Salary -->
+          <div class="col-md-6">
+            <label for="default_salary" class="form-label fw-semibold">Default Salary</label>
+            <input type="number"
+                   id="default_salary"
                    class="form-control"
                    name="default_salary"
-                   value="{{ employee.default_salary }}">
+                   value="{{ employee.default_salary|default_if_none:'' }}"
+                   step="0.01"
+                   min="0"
+                   placeholder="0.00">
           </div>
 
-          <div class="col-md-4">
-            <label class="form-label">Exit Date</label>
+          <!-- Exit Date -->
+          <div class="col-md-6">
+            <label for="exit_date" class="form-label fw-semibold">Exit Date</label>
             <input type="date"
+                   id="exit_date"
                    class="form-control"
                    name="exit_date"
-                   value="{{ employee.exit_date|date:'Y-m-d' }}">
+                   value="{% if employee.exit_date %}{{ employee.exit_date|date:'Y-m-d' }}{% endif %}">
+            <small class="form-text text-muted">Leave empty if employee is active</small>
           </div>
 
         </div>
 
-        <hr class="my-4">
-
-        <!-- ========================= -->
-        <!-- BANK DETAILS -->
-        <!-- ========================= -->
-        <h6 class="fw-bold mb-3">Bank Details Change</h6>
-
-        <div class="row g-3">
-
-          <div class="col-md-4">
-            <label class="form-label">Bank Name</label>
-            {{ bank_form.new_bank_name }}
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">Account Number</label>
-            {{ bank_form.new_account_number }}
-          </div>
-
-          <div class="col-md-4">
-            <label class="form-label">IFSC</label>
-            {{ bank_form.new_ifsc }}
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label">Effective Month</label>
-            {{ bank_form.effective_month }}
-          </div>
-
-          <div class="col-md-3">
-            <label class="form-label">Effective Year</label>
-            {{ bank_form.effective_year }}
-          </div>
-
-        </div>
-
-        <div class="mt-4">
-          <button type="submit" class="btn btn-warning px-4">
-            Submit Change Request
+        <!-- Form Actions -->
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-warning">
+            <i class="bi bi-send me-1"></i> Submit Profile Change
+          </button>
+          <button type="reset" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
           </button>
         </div>
 
       </form>
-
     </div>
   </div>
+
+
+  <!-- ============================================= -->
+  <!-- BANK DETAILS CHANGE REQUEST -->
+  <!-- ============================================= -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-primary-subtle">
+      <h5 class="mb-0"><i class="bi bi-bank me-2"></i>Bank Details Change Request</h5>
+      <small class="text-muted">Request new bank account details</small>
+    </div>
+
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="form_type" value="bank_change">
+
+        <!-- Non-field Errors -->
+        {% if bank_form.non_field_errors %}
+          <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            {{ bank_form.non_field_errors }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endif %}
+
+        <div class="row g-3">
+
+          <!-- Bank Name -->
+          <div class="col-md-4">
+            <label for="{{ bank_form.new_bank_name.id_for_label }}" class="form-label fw-semibold">
+              Bank Name <span class="text-danger">*</span>
+            </label>
+            {{ bank_form.new_bank_name }}
+            {% if bank_form.new_bank_name.errors %}
+              <div class="text-danger small mt-1">
+                {{ bank_form.new_bank_name.errors|first }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Account Number -->
+          <div class="col-md-4">
+            <label for="{{ bank_form.new_account_number.id_for_label }}" class="form-label fw-semibold">
+              Account Number <span class="text-danger">*</span>
+            </label>
+            {{ bank_form.new_account_number }}
+            {% if bank_form.new_account_number.errors %}
+              <div class="text-danger small mt-1">
+                {{ bank_form.new_account_number.errors|first }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- IFSC Code -->
+          <div class="col-md-4">
+            <label for="{{ bank_form.new_ifsc.id_for_label }}" class="form-label fw-semibold">
+              IFSC Code <span class="text-danger">*</span>
+            </label>
+            {{ bank_form.new_ifsc }}
+            {% if bank_form.new_ifsc.errors %}
+              <div class="text-danger small mt-1">
+                {{ bank_form.new_ifsc.errors|first }}
+              </div>
+            {% endif %}
+          </div>
+
+          <!-- Effective From Month -->
+          <div class="col-md-6">
+            <label for="{{ bank_form.effective_month.id_for_label }}" class="form-label fw-semibold">
+              Effective From Month <span class="text-danger">*</span>
+            </label>
+            {{ bank_form.effective_month }}
+            {% if bank_form.effective_month.errors %}
+              <div class="text-danger small mt-1">
+                {{ bank_form.effective_month.errors|first }}
+              </div>
+            {% endif %}
+            <small class="form-text text-muted">Select the month from which this account should be used</small>
+          </div>
+
+          <!-- Effective From Year -->
+          <div class="col-md-6">
+            <label for="{{ bank_form.effective_year.id_for_label }}" class="form-label fw-semibold">
+              Effective From Year <span class="text-danger">*</span>
+            </label>
+            {{ bank_form.effective_year }}
+            {% if bank_form.effective_year.errors %}
+              <div class="text-danger small mt-1">
+                {{ bank_form.effective_year.errors|first }}
+              </div>
+            {% endif %}
+          </div>
+
+        </div>
+
+        <!-- Form Actions -->
+        <div class="mt-4 d-flex gap-2">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-send me-1"></i> Submit Bank Change
+          </button>
+          <button type="reset" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ============================================= -->
+  <!-- PENDING CHANGE REQUESTS -->
+  <!-- ============================================= -->
+  {% if pending_changes %}
+  <div class="card shadow-sm">
+    <div class="card-header bg-info-subtle">
+      <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Pending Change Requests</h5>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead>
+            <tr>
+              <th scope="col">Requested At</th>
+              <th scope="col">Type</th>
+              <th scope="col">Changes</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for change in pending_changes %}
+            <tr>
+              <td>{{ change.requested_at|date:"M d, Y H:i" }}</td>
+              <td>
+                {% if change.changes %}
+                  <span class="badge bg-warning">Profile Change</span>
+                {% elif change.new_bank_name %}
+                  <span class="badge bg-primary">Bank Change</span>
+                {% endif %}
+              </td>
+              <td>
+                <small class="text-muted">
+                  {% if change.changes %}
+                    {% for field, values in change.changes.items %}
+                      <strong>{{ field|title }}:</strong> {{ values.old|default:"N/A" }} → {{ values.new }}{% if not forloop.last %}; {% endif %}
+                    {% endfor %}
+                  {% elif change.new_bank_name %}
+                    <strong>Bank:</strong> {{ change.new_bank_name }},
+                    <strong>Account:</strong> {{ change.new_account_number }},
+                    <strong>IFSC:</strong> {{ change.new_ifsc }}
+                  {% endif %}
+                </small>
+              </td>
+              <td>
+                {% if change.status == 'PENDING' %}
+                  <span class="badge bg-warning text-dark">{{ change.status }}</span>
+                {% elif change.status == 'APPROVED' %}
+                  <span class="badge bg-success">{{ change.status }}</span>
+                {% elif change.status == 'REJECTED' %}
+                  <span class="badge bg-danger">{{ change.status }}</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ change.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  {% endif %}
 
 </div>
 

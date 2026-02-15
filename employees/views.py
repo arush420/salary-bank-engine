@@ -9,7 +9,8 @@ from payroll.models import SalaryTransaction
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 
-from .forms import BankChangeRequestForm, EmployeeDraftForm
+from banking.forms import BankChangeRequestForm
+from .forms import EmployeeDraftForm
 from .models import Employee, EmployeeDraft, AuditLog, EmployeeChangeRequest
 from banking.models import EmployeeBankAccount, BankChangeRequest
 
@@ -19,22 +20,32 @@ from django.utils import timezone
 
 
 
-# @login_required
+@login_required
 def request_bank_change(request, employee_id):
+    employee = get_object_or_404(Employee, id=employee_id)
+
     if request.method == "POST":
         form = BankChangeRequestForm(request.POST)
+
         if form.is_valid():
             req = form.save(commit=False)
-            req.employee_id = employee_id
+            req.employee = employee
+            req.submitted_by = request.user
+            req.status = "PENDING"
             req.save()
-            return redirect("employees:employee_profile", employee_id=employee_id)
+
+            messages.success(request, "Bank change request submitted.")
+            return redirect("employees:employee_profile", employee_id=employee.id)
     else:
         form = BankChangeRequestForm()
 
     return render(
         request,
-        "employees/request_bank_change.html",
-        {"form": form}
+        "employees/bank_change.html",
+        {
+            "employee": employee,
+            "form": form
+        }
     )
 
 def employee_list(request):
@@ -50,27 +61,85 @@ def employee_list(request):
 def employee_profile(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
+    # Default unbound bank form (GET case)
+    bank_form = BankChangeRequestForm()
+
     # --------------------------
-    # Handle Bank Change Submit
+    # HANDLE POST
     # --------------------------
     if request.method == "POST":
-        bank_form = BankChangeRequestForm(request.POST)
+        form_type = request.POST.get("form_type")
 
-        if bank_form.is_valid():
-            bank_request = bank_form.save(commit=False)
-            bank_request.employee = employee
-            bank_request.submitted_by = request.user   # ✅ FIXED
-            bank_request.status = "PENDING"
-            bank_request.save()
+        # ==========================
+        # BANK CHANGE SUBMISSION
+        # ==========================
+        if form_type == "bank_change":
+            bank_form = BankChangeRequestForm(request.POST)
 
-            messages.success(request, "Bank change request submitted for approval.")
+            if bank_form.is_valid():
+                bank_request = bank_form.save(commit=False)
+                bank_request.employee = employee
+                bank_request.submitted_by = request.user
+                bank_request.status = "PENDING"
+                bank_request.save()
+
+                print(BankChangeRequestForm)
+                print(BankChangeRequestForm.__module__)
+
+                messages.success(request, "Bank change request submitted.")
+                return redirect(request.path)
+
+            # If invalid → DO NOT redirect
+            # Let it fall through and re-render with errors
+
+
+        # ==========================
+        # PROFILE CHANGE SUBMISSION
+        # ==========================
+        elif form_type == "profile_change":
+
+            changes = {}
+            fields = [
+                "name",
+                "father_name",
+                "uan_number",
+                "esic_number",
+                "document_number",
+                "default_salary",
+                "exit_date",
+                "joining_date",
+            ]
+
+            for field in fields:
+                old_value = getattr(employee, field)
+                new_value = request.POST.get(field)
+
+                if new_value == "":
+                    new_value = None
+
+                if str(old_value) != str(new_value):
+                    changes[field] = {
+                        "old": old_value,
+                        "new": new_value,
+                    }
+
+            if changes:
+                EmployeeChangeRequest.objects.create(
+                    employee=employee,
+                    changes=changes,
+                    requested_by=request.user,
+                )
+
+                messages.success(request, "Profile change request submitted.")
+            else:
+                messages.info(request, "No changes detected.")
+
             return redirect(request.path)
-    else:
-        bank_form = BankChangeRequestForm()
 
     # --------------------------
-    # Existing Logic
+    # LOAD EXISTING DATA
     # --------------------------
+
     latest_salary = SalaryTransaction.objects.filter(
         employee=employee
     ).order_by("-created_at").first()
@@ -94,13 +163,13 @@ def employee_profile(request, employee_id):
         "active_account": active_account,
         "audit_logs": audit_logs,
         "pending_changes": pending_changes,
-        "bank_form": bank_form,
+        "bank_form": bank_form,  # important: pass bound form if invalid
     }
 
     return render(
         request,
         "employees/employee_profile.html",
-        context
+        context,
     )
 
 
@@ -522,52 +591,107 @@ def confirm_employee_drafts(request):
     # Save only rows with OK / WARNING
 
 
+@login_required
 def request_employee_change(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
 
+    bank_form = BankChangeRequestForm()
+
+    # =============================
+    # HANDLE POST
+    # =============================
     if request.method == "POST":
-        changes = {}
+        form_type = request.POST.get("form_type")
 
-        for field in [
-            "name",
-            "father_name",
-            "uan_number",
-            "esic_number",
-            "document_number",
-            "default_salary",
-            "exit_date",
-        ]:
-            new_val = request.POST.get(field)
-            old_val = getattr(employee, field)
+        # -------------------------
+        # PROFILE CHANGE
+        # -------------------------
+        if form_type == "profile_change":
+            changes = {}
 
-            if str(old_val) != str(new_val) and new_val:
-                changes[field] = {
-                    "old": old_val,
-                    "new": new_val
-                }
+            fields = [
+                "name",
+                "father_name",
+                "uan_number",
+                "esic_number",
+                "document_number",
+                "default_salary",
+                "exit_date",
+            ]
 
-        if not changes:
-            return redirect("employees:employee_profile", employee_id=employee.id)
+            for field in fields:
+                old_val = getattr(employee, field)
+                new_val = request.POST.get(field)
 
-        EmployeeChangeRequest.objects.create(
-            employee=employee,
-            changes=changes,
-            requested_by=request.user
-        )
+                if new_val == "":
+                    new_val = None
 
-        AuditLog.objects.create(
-            action="EMPLOYEE_CHANGE_REQUESTED",
-            description=f"Change requested for {employee.emp_code}: {changes}",
-            performed_by=request.user
-        )
+                if str(old_val) != str(new_val):
+                    changes[field] = {
+                        "old": old_val,
+                        "new": new_val
+                    }
 
-        return redirect("employees:employee_profile", employee_id=employee.id)
+            if changes:
+                EmployeeChangeRequest.objects.create(
+                    employee=employee,
+                    changes=changes,
+                    requested_by=request.user
+                )
+
+                AuditLog.objects.create(
+                    action="EMPLOYEE_PROFILE_CHANGE_REQUESTED",
+                    description=f"{employee.emp_code}: {changes}",
+                    performed_by=request.user
+                )
+
+                messages.success(request, "Profile change request submitted.")
+            else:
+                messages.info(request, "No changes detected.")
+
+            return redirect(request.path)
+
+        # -------------------------
+        # BANK CHANGE
+        # -------------------------
+        elif form_type == "bank_change":
+            bank_form = BankChangeRequestForm(request.POST)
+
+            if bank_form.is_valid():
+                req = bank_form.save(commit=False)
+                req.employee = employee
+                req.submitted_by = request.user
+                req.status = "PENDING"
+                req.save()
+
+                AuditLog.objects.create(
+                    action="BANK_CHANGE_REQUESTED",
+                    description=f"{employee.emp_code}: {req.new_bank_name}",
+                    performed_by=request.user
+                )
+
+                messages.success(request, "Bank change request submitted.")
+                return redirect(request.path)
+
+    # =============================
+    # LOAD EXISTING REQUESTS
+    # =============================
+    pending_profile = employee.change_requests.filter(status="PENDING")
+    pending_bank = employee.bank_change_requests.filter(status="PENDING")
+
+    context = {
+        "employee": employee,
+        "bank_form": bank_form,
+        "pending_profile": pending_profile,
+        "pending_bank": pending_bank,
+    }
 
     return render(
         request,
         "employees/employee_change_request.html",
-        {"employee": employee, }
+        context
     )
+
 
 
 def apply_employee_change(request, request_id):
