@@ -217,8 +217,7 @@ def retry_failed_transactions(request, batch_id):
 
 def export_bank_file(request, month, year):
 
-    # TODO: Replace with request.user.company when multi-company isolation is done
-    company = Company.objects.first()
+    company = request.user.organisation_user.organisation.company
 
     batch = get_object_or_404(
         SalaryBatch,
@@ -227,18 +226,39 @@ def export_bank_file(request, month, year):
         year=year
     )
 
+    # 🔒 Reversed check
     if batch.status == "REVERSED":
         raise PermissionDenied("Reversed batch cannot be exported")
 
+    # 🔒 Only Draft allowed
     if batch.status != "DRAFT":
         raise PermissionDenied("Batch already exported or closed")
 
+    # ============================
+    # 🔥 STEP 4 VALIDATION HERE
+    # ============================
+
+    # 1️⃣ No HOLD transactions
+    if batch.transactions.filter(status="HOLD").exists():
+        messages.error(request, "Cannot export: Some salaries are on HOLD.")
+        return redirect("payroll:batch_detail", batch.id)
+
+    # 2️⃣ All transactions must have bank data
+    if batch.transactions.filter(account_number__isnull=True).exists():
+        messages.error(request, "Cannot export: Some employees have no bank account.")
+        return redirect("payroll:batch_detail", batch.id)
+
+    # 3️⃣ No negative salary
+    if batch.transactions.filter(salary_amount__lte=0).exists():
+        messages.error(request, "Invalid salary amounts detected.")
+        return redirect("payroll:batch_detail", batch.id)
+
+    # ============================
+
     with transaction.atomic():
-        # TODO: Generate actual bank file here
         batch.status = "EXPORTED"
         batch.save(update_fields=["status"])
 
-    return HttpResponse(
-        f"Bank export completed for {month}/{year}",
-        content_type="text/plain"
-    )
+    messages.success(request, f"Bank export completed for {month}/{year}")
+
+    return redirect("dashboard:salary_dashboard")

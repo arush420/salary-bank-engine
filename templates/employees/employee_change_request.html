@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 
+<!-- Back Navigation -->
+<a href="{% url 'employees:employee_list' %}" class="text-decoration-none text-primary">
+  <i class="bi bi-arrow-left"></i> Back to Employees
+</a>
+
 <div class="container mt-4">
 
   <!-- ============================================= -->

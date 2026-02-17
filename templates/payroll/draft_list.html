@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-info-subtle">
+      <h4 class="mb-0">Employee Drafts</h4>
+    </div>
+
+    <div class="card-body">
+
+      <div class="table-responsive">
+        <table class="table table-hover table-sm">
+
+          <thead>
+            <tr>
+              <th>Emp Code</th>
+              <th>Name</th>
+              <th>Company</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {% for draft in drafts %}
+              <tr>
+                <td>{{ draft.emp_code }}</td>
+                <td>{{ draft.name }}</td>
+                <td>{{ draft.company.name }}</td>
+                <td>
+                  <span class="badge bg-warning">
+                    {{ draft.status }}
+                  </span>
+                </td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="4" class="text-center text-muted">
+                  No drafts available.
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

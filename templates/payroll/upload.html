@@ -1,11 +1,91 @@
 {% extends "base.html" %}
-{% block title %}{{ status }} Payroll {% endblock %}
-{% block content %}
-<h2>Upload Salary</h2>
+{% block title %}Upload Salary{% endblock %}
 
-<form method="post" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ form.as_p }}
-  <button type="submit">Upload</button>
-</form>
+{% block content %}
+
+<div class="container mt-4">
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+      <h5 class="mb-0">Upload Salary File</h5>
+      <small class="text-muted">
+        Upload salary Excel file for selected company and month
+      </small>
+    </div>
+
+    <div class="card-body">
+
+      <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row g-3">
+
+          <!-- Company -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Company</label>
+            <select name="company_id" class="form-select" required>
+              <option value="">Select Company</option>
+              {% for company in companies %}
+                <option value="{{ company.id }}">
+                  {{ company.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Month -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Month</label>
+            {{ form.month }}
+          </div>
+
+          <!-- Year -->
+          <div class="col-md-4">
+            <label class="form-label fw-semibold">Year</label>
+            {{ form.year }}
+          </div>
+
+          <!-- File -->
+          <div class="col-md-6">
+            <label class="form-label fw-semibold">Salary File</label>
+            {{ form.file }}
+            <small class="text-muted">
+              Required columns: <strong>emp_code, salary</strong>
+            </small>
+          </div>
+
+        </div>
+
+        <div class="mt-4 d-flex gap-3">
+
+          <button type="submit" class="btn btn-primary">
+            Upload Salary
+          </button>
+
+          <a id="templateLink"
+             class="btn btn-outline-secondary"
+             href="#">
+             Download Template
+          </a>
+
+          <script>
+          document.querySelector("select[name='company_id']").addEventListener("change", function() {
+              let companyId = this.value;
+              if (companyId) {
+                  document.getElementById("templateLink").href =
+                      "/payroll/template/" + companyId + "/";
+              }
+          });
+          </script>
+
+
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
 {% endblock %}

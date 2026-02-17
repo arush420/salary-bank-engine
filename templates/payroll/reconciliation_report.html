@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+  <div class="card shadow-sm">
+    <div class="card-header bg-warning-subtle">
+      <h4 class="mb-0">Attendance Reconciliation</h4>
+    </div>
+
+    <div class="card-body">
+
+      <div class="row">
+
+        <!-- Continuing -->
+        <div class="col-md-4">
+          <h6 class="fw-bold">Continuing Employees</h6>
+          <ul class="list-group">
+            {% for emp in continuing %}
+              <li class="list-group-item">{{ emp }}</li>
+            {% empty %}
+              <li class="list-group-item text-muted">None</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- New -->
+        <div class="col-md-4">
+          <h6 class="fw-bold text-success">New Employees</h6>
+          <ul class="list-group">
+            {% for emp in new_employees %}
+              <li class="list-group-item text-success">{{ emp }}</li>
+            {% empty %}
+              <li class="list-group-item text-muted">None</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <!-- Left -->
+        <div class="col-md-4">
+          <h6 class="fw-bold text-danger">Left Employees</h6>
+          <ul class="list-group">
+            {% for emp in left_employees %}
+              <li class="list-group-item text-danger">{{ emp }}</li>
+            {% empty %}
+              <li class="list-group-item text-muted">None</li>
+            {% endfor %}
+          </ul>
+        </div>
+
+      </div>
+
+      <form method="post" class="mt-4">
+        {% csrf_token %}
+        <button class="btn btn-success">
+          Approve & Create Drafts
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

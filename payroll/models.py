@@ -48,7 +48,12 @@ class SalaryBatch(models.Model):
 # =========================
 
 class SalaryTransaction(models.Model):
-    STATUS_CHOICES = [
+    STATUS_CHOICES =[
+        ("DRAFT", "Draft"),
+        ("READY", "Ready for Export"),
+        ("EXPORTED", "Exported to Bank"),
+        ("COMPLETED", "Completed"),
+        ("REVERSED", "Reversed"),
         ("PENDING", "Pending"),
         ("HOLD", "Hold"),
         ("PROCESSED", "Processed"),
