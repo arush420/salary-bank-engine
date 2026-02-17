@@ -1,13 +1,14 @@
 from banking.models import EmployeeBankAccount
 from payroll.models import SalaryTransaction
 
+
 def should_hold_salary(employee):
     """
     Returns (True, reason) if salary must be put on HOLD
     """
 
-    if not employee.is_active:
-        return True, "Employee is inactive / left"
+    if employee.exit_date:
+        return True, "Employee has exited"
 
     active_bank = EmployeeBankAccount.objects.filter(
         employee=employee,
@@ -34,6 +35,7 @@ def release_salary_holds(employee):
         txn.status = "PENDING"
         txn.hold_reason = None
         txn.save(update_fields=["status", "hold_reason"])
+
 
 def assert_batch_not_reversed(batch):
     if batch.status == "REVERSED":
