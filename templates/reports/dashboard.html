@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <h2 class="mb-4">Reports Center</h2>
+
+    <div class="row g-4">
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-4">
+                <h5>Salary Report</h5>
+                <p class="text-muted small">
+                    Download salary transactions month-wise
+                </p>
+                <a href="{% url 'reports:salary_report' %}" class="btn btn-primary">
+                    Open
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-4">
+                <h5>Salary + Bank Report</h5>
+                <p class="text-muted small">
+                    Includes bank snapshot & transaction status
+                </p>
+                <a href="{% url 'reports:salary_report' %}?include_bank=1" class="btn btn-primary">
+                    Open
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm p-4">
+                <h5>Bank Change Report</h5>
+                <p class="text-muted small">
+                    Track bank change requests
+                </p>
+                <a href="{% url 'reports:bank_change_report' %}" class="btn btn-primary">
+                    Open
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

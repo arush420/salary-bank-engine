@@ -495,11 +495,41 @@
                     <div class="dropdown">
                         <button class="dropbtn">Reports ▾</button>
                         <div class="dropdown-content">
-                            <a href="#">Salary Reports</a>
-                            <a href="#">PF / ESI</a>
-                            <a href="#">Ledger</a>
+
+                            <!-- Reports Dashboard -->
+                            <a href="{% url 'reports:dashboard' %}">
+                                📊 Reports Center
+                            </a>
+
+                            <!-- Salary Report -->
+                            <a href="{% url 'reports:salary_report' %}">
+                                💰 Salary Report
+                            </a>
+
+                            <!-- Salary + Bank Snapshot -->
+                            <a href="{% url 'reports:salary_report' %}?include_bank=1">
+                                🏦 Salary + Bank Report
+                            </a>
+
+                            <!-- Bank Change Report -->
+                            <a href="{% url 'reports:bank_change_report' %}">
+                                🔄 Bank Change Report
+                            </a>
+
+                            <hr class="my-2">
+
+                            <!-- Future Modules -->
+                            <a href="#">
+                                🧾 PF / ESI (Coming Soon)
+                            </a>
+
+                            <a href="#">
+                                📘 Ledger (Coming Soon)
+                            </a>
+
                         </div>
                     </div>
+
 
                     <div class="dropdown">
                         <button class="dropbtn">Export ▾</button>

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Salary Report{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="mb-4">Salary Report</h2>
+
+    <form method="get" class="row g-3 mb-4">
+
+        <!-- Company Dropdown -->
+        <div class="col-md-3">
+            <label class="form-label">Company</label>
+            <select name="company" class="form-select" required>
+                <option value="">Select Company</option>
+                {% for company in companies %}
+                    <option value="{{ company.id }}"
+                        {% if selected_company and company.id == selected_company.id %}
+                            selected
+                        {% endif %}
+                    >
+                        {{ company.site_code }} - {{ company.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Month -->
+        <div class="col-md-2">
+            <label class="form-label">Month</label>
+            <select name="month" class="form-select">
+                {% for m in months %}
+                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>
+                        {{ m }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Year -->
+        <div class="col-md-2">
+            <label class="form-label">Year</label>
+            <select name="year" class="form-select">
+                {% for y in years %}
+                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>
+                        {{ y }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="col-md-2 align-self-end">
+            <button type="submit" class="btn btn-primary">
+                Filter
+            </button>
+        </div>
+
+    </form>
+
+    {% if not selected_company %}
+        <div class="alert alert-warning">
+            Please select a company to view salary report.
+        </div>
+    {% elif not transactions %}
+        <div class="alert alert-info">
+            No salary data found for selected month/year.
+        </div>
+    {% else %}
+
+        <div class="card shadow-sm mb-3">
+            <div class="card-body table-responsive">
+                <table class="table table-bordered table-sm">
+                    <thead>
+                        <tr>
+                            <th>Emp Code</th>
+                            <th>Name</th>
+                            <th>Salary</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for txn in transactions %}
+                        <tr>
+                            <td>{{ txn.employee.emp_code }}</td>
+                            <td>{{ txn.employee.name }}</td>
+                            <td>₹ {{ txn.salary_amount }}</td>
+                            <td>{{ txn.status }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-2">
+                <a href="?company={{ selected_company.id }}&month={{ month }}&year={{ year }}&export=excel"
+                   class="btn btn-success">
+                    Download Excel
+                </a>
+            </div>
+        </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}
