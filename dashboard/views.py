@@ -7,6 +7,7 @@ from django.db import models
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
+from companies.models import Company
 from employees.models import (
     Employee,
     EmployeeDraft,
@@ -27,24 +28,66 @@ from .utils import can_reverse_batch
 # -------------------------------------------------
 @login_required
 def home(request):
-    context = {
-        "active_employees": Employee.objects.filter(
-            exit_date__isnull=True
-        ).count()
+    from datetime import date
+    from django.db.models import Sum
+
+    today = date.today()
+    current_month = today.month
+    current_year = today.year
+
+    # =========================================
+    # ORGANISATION LEVEL DATA
+    # =========================================
+
+    organisation = request.user.organisation_user.organisation
+
+    companies = Company.objects.filter(organisation=organisation)
+    employees = Employee.objects.filter(company__organisation=organisation)
+
+    total_companies = companies.count()
+    total_employees = employees.count()
+    active_employees = employees.filter(exit_date__isnull=True).count()
+
+    # =========================================
+    # CURRENT MONTH PAYROLL SUMMARY
+    # =========================================
+
+    batches = SalaryBatch.objects.filter(
+        company__organisation=organisation,
+        month=current_month,
+        year=current_year
+    )
+
+    transactions = SalaryTransaction.objects.filter(batch__in=batches)
+
+    payroll_summary = {
+        "total": transactions.aggregate(total=Sum("salary_amount"))["total"] or 0,
+        "processed": transactions.filter(status="PROCESSED").aggregate(
+            total=Sum("salary_amount")
+        )["total"] or 0,
+        "pending": transactions.filter(status="PENDING").count(),
+        "hold": transactions.filter(status="HOLD").aggregate(
+            total=Sum("salary_amount")
+        )["total"] or 0,
+        "failed": transactions.filter(status="FAILED").aggregate(
+            total=Sum("salary_amount")
+        )["total"] or 0,
     }
 
-    # Show approvals only to staff (for now)
+    context = {
+        "total_companies": total_companies,
+        "total_employees": total_employees,
+        "active_employees": active_employees,
+        "payroll_summary": payroll_summary,
+        "month": current_month,
+        "year": current_year,
+    }
+
     if request.user.is_staff:
         context.update({
-            "pending_employee_drafts": EmployeeDraft.objects.filter(
-                status="PENDING"
-            ).count(),
-            "pending_profile_changes": EmployeeChangeRequest.objects.filter(
-                status="PENDING"
-            ).count(),
-            "pending_bank_changes": BankChangeRequest.objects.filter(
-                status="PENDING"
-            ).count(),
+            "pending_employee_drafts": EmployeeDraft.objects.filter(status="PENDING").count(),
+            "pending_profile_changes": EmployeeChangeRequest.objects.filter(status="PENDING").count(),
+            "pending_bank_changes": BankChangeRequest.objects.filter(status="PENDING").count(),
         })
 
     return render(request, "dashboard/home.html", context)

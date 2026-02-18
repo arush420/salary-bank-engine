@@ -1,50 +1,153 @@
 {% extends "base.html" %}
-
 {% block content %}
-<h2>Dashboard</h2>
+<div class="container mt-4">
 
-<p>Welcome, {{ request.user.username }} 👋</p>
+    <h2 class="mb-1">Organisation Dashboard</h2>
+    <p class="text-muted">Welcome, {{ request.user.username }} 👋</p>
 
-{# Check if a company IS selected #}
-{% if request.company %}
+    <!-- ===================================== -->
+    <!-- ORGANISATION STATS -->
+    <!-- ===================================== -->
 
-    <p><strong>Organisation:</strong> {{ request.company.organisation.name }}</p>
-    <p><strong>Company:</strong> {{ request.company.name }}</p>
+    <div class="row g-4 mb-4">
 
-    <p>
-        <strong>Active Company:</strong>
-        {{ request.company.site_code }}. {{ request.company.name }}
-    </p>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-4">
+                <div class="small text-muted">Total Companies</div>
+                <div class="display-6 fw-bold">
+                    {{ total_companies }}
+                </div>
+            </div>
+        </div>
 
-{# If NO company is selected, show the selection list #}
-{% else %}
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-4">
+                <div class="small text-muted">Total Employees</div>
+                <div class="display-6 fw-bold">
+                    {{ total_employees }}
+                </div>
+            </div>
+        </div>
 
-    <div style="border:1px solid #f5c2c7; background:#fff5f5; padding:15px;">
-        <p style="color:red;"><strong>No company selected.</strong></p>
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 p-4 bg-success bg-opacity-10">
+                <div class="small text-muted">Active Employees</div>
+                <div class="display-6 fw-bold text-success">
+                    {{ active_employees }}
+                </div>
+            </div>
+        </div>
 
-        <p>Select a company to continue:</p>
-
-        <ul>
-            {% for company in request.available_companies %}
-                <li>
-                    <a href="{% url 'companies:select_company' company.id %}">
-                        {{ company.site_code }}. {{ company.name }}
-                    </a>
-                </li>
-            {% empty %}
-                <li>
-                    No companies created yet.
-                    {% if request.role == "ADMIN" %}
-                        <br>
-                        <a href="{% url 'companies:company_create' %}">
-                            ➕ Create your first company
-                        </a>
-                    {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
     </div>
 
-{% endif %}
 
+    <!-- ===================================== -->
+    <!-- CURRENT MONTH PAYROLL SNAPSHOT -->
+    <!-- ===================================== -->
+
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Payroll Snapshot</h5>
+                <span class="badge bg-primary">
+                    {{ month }}/{{ year }}
+                </span>
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-md-3">
+                    <div class="p-3 bg-light rounded">
+                        <div class="small text-muted">Total Salary</div>
+                        <div class="h4 fw-bold">
+                            ₹ {{ payroll_summary.total }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="p-3 bg-success bg-opacity-10 rounded">
+                        <div class="small text-muted">Processed</div>
+                        <div class="h4 fw-bold text-success">
+                            ₹ {{ payroll_summary.processed }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="p-3 bg-warning bg-opacity-10 rounded">
+                        <div class="small text-muted">On Hold</div>
+                        <div class="h4 fw-bold text-warning">
+                            ₹ {{ payroll_summary.hold }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="p-3 bg-danger bg-opacity-10 rounded">
+                        <div class="small text-muted">Failed</div>
+                        <div class="h4 fw-bold text-danger">
+                            ₹ {{ payroll_summary.failed }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="mt-3 text-muted small">
+                Pending Transactions: {{ payroll_summary.pending }}
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- ===================================== -->
+    <!-- APPROVALS -->
+    <!-- ===================================== -->
+
+    {% if request.user.is_staff %}
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <h5 class="mb-3">Pending Approvals</h5>
+
+            <div class="row">
+
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                        <div class="small text-muted">Employee Drafts</div>
+                        <div class="h5 fw-bold">
+                            {{ pending_employee_drafts }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                        <div class="small text-muted">Profile Changes</div>
+                        <div class="h5 fw-bold">
+                            {{ pending_profile_changes }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="p-3 bg-warning bg-opacity-10 rounded text-center">
+                        <div class="small text-muted">Bank Changes</div>
+                        <div class="h5 fw-bold">
+                            {{ pending_bank_changes }}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    {% endif %}
+
+</div>
 {% endblock %}
