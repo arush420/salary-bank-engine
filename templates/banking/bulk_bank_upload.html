@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card shadow-sm p-4">
+
+    <h4 class="mb-4">Bulk Bank Account Upload</h4>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        <div class="row mb-3">
+
+            <div class="col-md-4">
+                <label class="form-label">Company</label>
+                <select name="company_id" id="companySelect" class="form-select" required>
+                    <option value="">Select Company</option>
+                    {% for company in companies %}
+                        <option value="{{ company.id }}">
+                            {{ company.site_code }} - {{ company.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        </div>
+
+        <!-- DOWNLOAD TEMPLATE BUTTON -->
+        <div class="mb-3">
+            <button type="button"
+                    id="downloadTemplateBtn"
+                    class="btn btn-outline-secondary"
+                    disabled>
+                📥 Download Template
+            </button>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Excel File</label>
+            <input type="file" name="file" class="form-control" required>
+            <small class="text-muted">
+                Required columns: Emp Code, Account Number, IFSC
+            </small>
+        </div>
+
+        <button type="submit" class="btn btn-primary">
+            Upload Accounts
+        </button>
+
+    </form>
+
+</div>
+
+<script>
+    const companySelect = document.getElementById("companySelect");
+    const downloadBtn = document.getElementById("downloadTemplateBtn");
+
+    companySelect.addEventListener("change", function() {
+        if (this.value) {
+            downloadBtn.disabled = false;
+        } else {
+            downloadBtn.disabled = true;
+        }
+    });
+
+    downloadBtn.addEventListener("click", function() {
+        const companyId = companySelect.value;
+        if (companyId) {
+            window.location.href = `/banking/template/${companyId}/`;
+        }
+    });
+</script>
+
+{% endblock %}

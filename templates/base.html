@@ -478,7 +478,8 @@
                             <a href="{% url 'employees:employee_draft_create' %}">Add Employee</a>
                             <a href="#">Attendance</a>
                             <a href="{% url 'payroll:salary_upload' %}">Payroll</a>
-                            <a href="{% url 'banking:bank_response_upload' %}">Bank</a>
+                            <a href="{% url 'banking:bulk_bank_upload' %}">Bank Account Update</a>
+                            <a href="{% url 'banking:bank_response_upload' %}">Bank UTR Upload</a>
                             {% if approval_badges %}
                                 {% with total=approval_badges.employee_drafts|add:approval_badges.employee_changes|add:approval_badges.bank_changes %}
                                     <a href="{% url 'dashboard:approvals' %}">

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -7,6 +8,7 @@ from django.db import transaction
 from datetime import date
 import pandas as pd
 
+from employees.models import Employee
 from payroll.models import SalaryBatch, SalaryTransaction
 from companies.models import Company
 from .forms import BankResponseUploadForm
@@ -73,6 +75,156 @@ def approve_request(request, id):
     messages.success(request, "Bank change approved successfully.")
     return redirect("banking:bank_change_approval_list")
 
+# =====================================================
+# DOWNLOAD BANK Template
+# =====================================================
+@login_required
+def download_bank_template(request, company_id):
+
+    organisation = request.user.organisation_user.organisation
+
+    company = get_object_or_404(
+        Company,
+        id=company_id,
+        organisation=organisation
+    )
+
+    # Employees without active bank
+    employees = Employee.objects.filter(
+        company=company
+    ).exclude(
+        bank_accounts__is_active=True
+    )
+
+    data = []
+
+    for emp in employees:
+        data.append({
+            "Site Code": company.site_code,
+            "Emp Code": emp.emp_code,
+            "Employee Name": emp.name,
+            "Account Number": "",
+            "IFSC": "",
+        })
+
+    df = pd.DataFrame(data)
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    filename = f"{company.name}_bank_template.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    df.to_excel(response, index=False)
+
+    return response
+# =====================================================
+# BANK Account Bulk Upload
+# =====================================================
+from datetime import date
+from django.db.models import Q
+
+@login_required
+def bulk_bank_upload(request):
+
+    companies = Company.objects.filter(
+        organisation=request.user.organisation_user.organisation
+    )
+
+    if request.method == "POST":
+
+        company_id = request.POST.get("company_id")
+        file = request.FILES.get("file")
+
+        if not company_id or not file:
+            messages.error(request, "Company and file required.")
+            return redirect("banking:bulk_bank_upload")
+
+        company = get_object_or_404(
+            Company,
+            id=company_id,
+            organisation=request.user.organisation_user.organisation
+        )
+
+        try:
+            df = pd.read_excel(file)
+        except Exception:
+            messages.error(request, "Invalid Excel file.")
+            return redirect("banking:bulk_bank_upload")
+
+        required_cols = {"Emp Code", "Account Number", "IFSC"}
+
+        if not required_cols.issubset(df.columns):
+            messages.error(request, "Invalid template format.")
+            return redirect("banking:bulk_bank_upload")
+
+        created = 0
+        skipped = 0
+
+        # 👇 Effective date = current month first day
+        today = date.today()
+        effective_date = date(today.year, today.month, 1)
+
+        with transaction.atomic():
+
+            for _, row in df.iterrows():
+
+                emp_code = str(row["Emp Code"]).strip()
+                account_number = str(row["Account Number"]).strip()
+                ifsc = str(row["IFSC"]).strip().upper()
+
+                # Basic validation
+                if not emp_code or not account_number or not ifsc:
+                    skipped += 1
+                    continue
+
+                # IFSC length validation
+                if len(ifsc) != 11:
+                    skipped += 1
+                    continue
+
+                try:
+                    employee = Employee.objects.get(
+                        emp_code=emp_code,
+                        company=company
+                    )
+                except Employee.DoesNotExist:
+                    skipped += 1
+                    continue
+
+                # Deactivate old active accounts (enterprise-safe)
+                EmployeeBankAccount.objects.filter(
+                    employee=employee,
+                    is_active=True
+                ).update(is_active=False)
+
+                # Create new account
+                EmployeeBankAccount.objects.create(
+                    employee=employee,
+                    bank_name="Bulk Upload",
+                    account_number=account_number,
+                    ifsc=ifsc,
+                    effective_from_month=effective_date,
+                    is_active=True
+                )
+
+                release_salary_holds(employee)
+
+                created += 1
+
+        messages.success(
+            request,
+            f"Upload complete — Created: {created}, Skipped: {skipped}"
+        )
+
+        return redirect("banking:bulk_bank_upload")
+
+    return render(
+        request,
+        "banking/bulk_bank_upload.html",
+        {"companies": companies}
+    )
 
 # =====================================================
 # BANK RESPONSE (UTR) UPLOAD

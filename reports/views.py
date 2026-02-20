@@ -136,6 +136,118 @@ def salary_report(request):
 
     return render(request, "reports/salary_report.html", context)
 
+from django.db.models import Sum, Count
+from django.utils.timezone import now
+
+
+@login_required
+def yearly_salary_report(request):
+
+    year = request.GET.get("year")
+    company_id = request.GET.get("company")
+
+    if not year or not company_id:
+        return HttpResponse("Year and Company required")
+
+    organisation = request.user.organisation_user.organisation
+
+    company = get_object_or_404(
+        Company,
+        id=company_id,
+        organisation=organisation
+    )
+
+    batches = SalaryBatch.objects.filter(
+        company=company,
+        year=year
+    )
+
+    transactions = SalaryTransaction.objects.filter(
+        batch__in=batches
+    ).select_related("employee", "batch")
+
+    if not transactions.exists():
+        return HttpResponse("No salary data for selected year")
+
+    # ============================================
+    # SHEET 1 — FULL TRANSACTION DATA
+    # ============================================
+
+    detail_rows = []
+
+    for txn in transactions:
+        detail_rows.append({
+            "Month": txn.batch.month,
+            "Emp Code": txn.employee.emp_code,
+            "Employee Name": txn.employee.name,
+            "Salary": txn.salary_amount,
+            "Status": txn.status,
+        })
+
+    df_detail = pd.DataFrame(detail_rows)
+
+    # ============================================
+    # SHEET 2 — MONTHLY SUMMARY
+    # ============================================
+
+    monthly_summary = (
+        df_detail
+        .groupby(["Month", "Status"])["Salary"]
+        .agg(["count", "sum"])
+        .reset_index()
+    )
+
+    monthly_pivot = (
+        monthly_summary
+        .pivot_table(
+            index="Month",
+            columns="Status",
+            values="sum",
+            fill_value=0
+        )
+        .reset_index()
+    )
+
+    monthly_total = (
+        df_detail
+        .groupby("Month")["Salary"]
+        .sum()
+        .reset_index(name="Total Salary")
+    )
+
+    df_monthly = monthly_total.merge(monthly_pivot, on="Month", how="left")
+
+    # ============================================
+    # SHEET 3 — YEAR SUMMARY
+    # ============================================
+
+    year_summary = {
+        "Total Transactions": len(df_detail),
+        "Total Salary": df_detail["Salary"].sum(),
+        "Processed Salary": df_detail[df_detail["Status"] == "PROCESSED"]["Salary"].sum(),
+        "Hold Salary": df_detail[df_detail["Status"] == "HOLD"]["Salary"].sum(),
+        "Failed Salary": df_detail[df_detail["Status"] == "FAILED"]["Salary"].sum(),
+    }
+
+    df_year_summary = pd.DataFrame([year_summary])
+
+    # ============================================
+    # EXPORT MULTI-SHEET EXCEL
+    # ============================================
+
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+    filename = f"{company.name}_{year}_yearly_salary_report.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+
+    with pd.ExcelWriter(response, engine="openpyxl") as writer:
+        df_detail.to_excel(writer, sheet_name="Transactions", index=False)
+        df_monthly.to_excel(writer, sheet_name="Monthly Summary", index=False)
+        df_year_summary.to_excel(writer, sheet_name="Year Summary", index=False)
+
+    return response
 
 # =====================================================
 # BANK CHANGE REPORT
