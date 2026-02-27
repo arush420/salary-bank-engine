@@ -1,3 +1,5 @@
+from datetime import datetime, date
+
 from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
@@ -617,7 +619,10 @@ def request_employee_change(request, employee_id):
                 "document_number",
                 "default_salary",
                 "exit_date",
+                "joining_date",
             ]
+
+            date_fields = ["exit_date", "joining_date"]
 
             for field in fields:
                 old_val = getattr(employee, field)
@@ -626,10 +631,20 @@ def request_employee_change(request, employee_id):
                 if new_val == "":
                     new_val = None
 
-                if str(old_val) != str(new_val):
+                # Parse date strings for comparison ← NOW at correct indent level
+                if field in date_fields and new_val:
+                    try:
+                        new_val = datetime.strptime(new_val, "%Y-%m-%d").date()
+                    except ValueError:
+                        try:
+                            new_val = datetime.strptime(new_val, "%d-%m-%Y").date()
+                        except ValueError:
+                            pass
+
+                if str(old_val) != str(new_val):  # ← also at correct indent level
                     changes[field] = {
-                        "old": old_val,
-                        "new": new_val
+                        "old": str(old_val) if old_val else None,
+                        "new": str(new_val) if new_val else None,
                     }
 
             if changes:
@@ -804,6 +819,16 @@ def reject_employee_change(request, employee_id):
             )
 
     return redirect("employees:employee_profile", employee.id)
+
+@login_required
+def employee_change_approval_list(request):
+    pending_changes = EmployeeChangeRequest.objects.filter(
+        status="PENDING"
+    ).select_related("employee").order_by("-requested_at")
+
+    return render(request, "employees/employee_change_approval_list.html", {
+        "pending_changes": pending_changes,
+    })
 
 
 @login_required

@@ -77,7 +77,25 @@ urlpatterns = [
         views.request_employee_change,
         name="employee_change_request"
     ),
+    path(
+        "changes/approval/",
+        views.employee_change_approval_list,
+        name="employee_change_approval_list"
+    ),
 
+    path(
+        "<int:employee_id>/change/approve/",
+        views.approve_employee_change,
+        name="approve_employee_change"
+    ),
+    path(
+        "<int:employee_id>/change/reject/",
+        views.reject_employee_change,
+        name="reject_employee_change"
+    ),
+
+
+    # =========================================
     # Admin approves / rejects ALL pending changes for an employee
     path(
         "<int:employee_id>/change/approve/",

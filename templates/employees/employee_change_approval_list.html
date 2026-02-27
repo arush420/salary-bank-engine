@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block content %}
+
+<h2 class="mb-4">Pending Profile Change Requests</h2>
+
+{% if pending_changes %}
+<div class="table-responsive">
+  <table class="table table-hover">
+    <thead>
+      <tr>
+        <th>Emp Code</th>
+        <th>Name</th>
+        <th>Requested At</th>
+        <th>Changes</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for change in pending_changes %}
+      <tr>
+        <td>{{ change.employee.emp_code }}</td>
+        <td>{{ change.employee.name }}</td>
+        <td>{{ change.requested_at|date:"M d, Y H:i" }}</td>
+        <td>
+          <small>
+            {% for field, values in change.changes.items %}
+              <strong>{{ field|title }}:</strong>
+              {{ values.old|default:"N/A" }} → {{ values.new|default:"N/A" }}
+              {% if not forloop.last %}<br>{% endif %}
+            {% endfor %}
+          </small>
+        </td>
+        <td>
+          <a href="{% url 'employees:approve_employee_change' change.employee.id %}"
+             class="btn btn-sm btn-success">Approve</a>
+          <a href="{% url 'employees:reject_employee_change' change.employee.id %}"
+             class="btn btn-sm btn-danger">Reject</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <p class="text-muted">No pending profile change requests.</p>
+{% endif %}
+
+{% endblock %}
