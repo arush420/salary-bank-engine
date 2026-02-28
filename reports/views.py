@@ -6,10 +6,11 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Sum, Count
+from django.urls import reverse
 
 from companies.models import Company
 from payroll.models import SalaryBatch, SalaryTransaction
-from banking.models import BankChangeRequest
+from banking.models import BankChangeRequest, EmployeeBankAccount
 
 
 # =====================================================
@@ -416,3 +417,50 @@ def transaction_status_manager(request):
     }
 
     return render(request, "reports/transaction_status_manager.html", context)
+
+@login_required
+def reprocess_bank_snapshot(request):
+    if request.method != "POST":
+        return redirect("reports:salary_report")
+
+    company_id = request.POST.get("company")
+    month = request.POST.get("month")
+    year = request.POST.get("year")
+
+    organisation = request.user.organisation_user.organisation
+
+    company = get_object_or_404(Company, id=company_id, organisation=organisation)
+
+    batch = get_object_or_404(SalaryBatch, company=company, month=month, year=year)
+
+    transactions = SalaryTransaction.objects.filter(
+        batch=batch
+    ).select_related("employee")
+
+    updated = 0
+    skipped = 0
+
+    for txn in transactions:
+        # Fetch current active bank account for this employee
+        active_bank = EmployeeBankAccount.objects.filter(
+            employee=txn.employee,
+            is_active=True
+        ).first()
+
+        if active_bank:
+            txn.account_number = active_bank.account_number
+            txn.ifsc = active_bank.ifsc
+            txn.save(update_fields=["account_number", "ifsc"])
+            updated += 1
+        else:
+            skipped += 1
+
+    messages.success(
+        request,
+        f"Reprocessed {updated} transactions with bank data. "
+        f"{skipped} skipped (no active bank account found)."
+    )
+
+    return redirect(
+        f"{reverse('reports:salary_report')}?company={company_id}&month={month}&year={year}"
+    )

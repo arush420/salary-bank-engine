@@ -4,109 +4,151 @@
 {% block content %}
 <div class="container mt-4">
 
-    <h2 class="mb-4">Salary Report</h2>
+  <h2 class="mb-4">Salary Report</h2>
 
-    <form method="get" class="row g-3 mb-4">
+  <!-- ================================ -->
+  <!-- FILTERS -->
+  <!-- ================================ -->
+  <form method="get" class="row g-3 mb-4">
 
-        <!-- Company Dropdown -->
-        <div class="col-md-3">
-            <label class="form-label">Company</label>
-            <select name="company" class="form-select" required>
-                <option value="">Select Company</option>
-                {% for company in companies %}
-                    <option value="{{ company.id }}"
-                        {% if selected_company and company.id == selected_company.id %}
-                            selected
-                        {% endif %}
-                    >
-                        {{ company.site_code }} - {{ company.name }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+    <div class="col-md-3">
+      <label class="form-label">Company</label>
+      <select name="company" class="form-select" required>
+        <option value="">Select Company</option>
+        {% for company in companies %}
+          <option value="{{ company.id }}"
+            {% if selected_company.id == company.id %}selected{% endif %}>
+            {{ company.site_code }} - {{ company.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
 
-        <!-- Month -->
-        <div class="col-md-2">
-            <label class="form-label">Month</label>
-            <select name="month" class="form-select">
-                {% for m in months %}
-                    <option value="{{ m }}" {% if m == month %}selected{% endif %}>
-                        {{ m }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+    <div class="col-md-2">
+      <label class="form-label">Month</label>
+      <select name="month" class="form-select">
+        {% for m in months %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-        <!-- Year -->
-        <div class="col-md-2">
-            <label class="form-label">Year</label>
-            <select name="year" class="form-select">
-                {% for y in years %}
-                    <option value="{{ y }}" {% if y == year %}selected{% endif %}>
-                        {{ y }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
+    <div class="col-md-2">
+      <label class="form-label">Year</label>
+      <select name="year" class="form-select">
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
 
-        <div class="col-md-2 align-self-end">
-            <button type="submit" class="btn btn-primary">
-                Filter
-            </button>
-        </div>
+    <div class="col-md-2 align-self-end">
+      <button type="submit" class="btn btn-primary w-100">Filter</button>
+    </div>
 
-    </form>
+  </form>
 
-    {% if not selected_company %}
-        <div class="alert alert-warning">
-            Please select a company to view salary report.
-        </div>
-    {% elif not transactions %}
-        <div class="alert alert-info">
-            No salary data found for selected month/year.
-        </div>
-    {% else %}
+  <!-- ================================ -->
+  <!-- STATES -->
+  <!-- ================================ -->
+  {% if not selected_company %}
+    <div class="alert alert-warning">Please select a company to view the salary report.</div>
 
-        <div class="card shadow-sm mb-3">
-            <div class="card-body table-responsive">
-                <table class="table table-bordered table-sm">
-                    <thead>
-                        <tr>
-                            <th>Emp Code</th>
-                            <th>Name</th>
-                            <th>Salary</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for txn in transactions %}
-                        <tr>
-                            <td>{{ txn.employee.emp_code }}</td>
-                            <td>{{ txn.employee.name }}</td>
-                            <td>₹ {{ txn.salary_amount }}</td>
-                            <td>{{ txn.status }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
+  {% elif not transactions %}
+    <div class="alert alert-info">No salary data found for the selected month/year.</div>
 
-        <div class="row">
-            <div class="col-md-2">
-                <a href="?company={{ selected_company.id }}&month={{ month }}&year={{ year }}&export=excel"
-                   class="btn btn-success">
-                    Download Excel
-                </a>
-            </div>
-        </div>
-          <a href="{% url 'reports:yearly_salary_report' %}?company={{ selected_company.id }}&year={{ year }}"
-           class="btn btn-success">
-           📈 Download Yearly Report
-        </a>
+  {% else %}
 
+    <!-- ================================ -->
+    <!-- TABLE -->
+    <!-- ================================ -->
+    <div class="card shadow-sm mb-3">
+      <div class="card-body table-responsive p-0">
+        <table class="table table-bordered table-sm table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Emp Code</th>
+              <th>Name</th>
+              <th>Salary</th>
+              <th>Account Number</th>  <!-- ADD -->
+              <th>IFSC</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for txn in transactions %}
+            <tr>
+              <td>{{ txn.employee.emp_code }}</td>
+              <td>{{ txn.employee.name }}</td>
+              <td>₹ {{ txn.salary_amount }}</td>
+              <td>                                          <!-- ADD -->
+                  {% if txn.account_number %}
+                    {{ txn.account_number }}
+                  {% else %}
+                    <span class="text-danger small">Missing</span>
+                  {% endif %}
+              </td>
+              <td>                                          <!-- ADD -->
+                  {% if txn.ifsc %}
+                    {{ txn.ifsc }}
+                  {% else %}
+                    <span class="text-danger small">Missing</span>
+                  {% endif %}
+              </td>
+              <td>
+                {% if txn.status == "READY" %}
+                  <span class="badge bg-primary">Ready</span>
+                {% elif txn.status == "HOLD" %}
+                  <span class="badge bg-danger">Hold</span>
+                {% elif txn.status == "PENDING" %}
+                  <span class="badge bg-warning text-dark">Pending</span>
+                {% elif txn.status == "COMPLETED" %}
+                  <span class="badge bg-success">Completed</span>
+                {% elif txn.status == "EXPORTED" %}
+                  <span class="badge bg-info text-dark">Exported</span>
+                {% else %}
+                  <span class="badge bg-secondary">{{ txn.status }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
 
-    {% endif %}
+    <!-- ================================ -->
+    <!-- ACTIONS -->
+    <!-- ================================ -->
+    <div class="d-flex flex-wrap gap-2">
+
+      <a href="?company={{ selected_company.id }}&month={{ month }}&year={{ year }}&export=excel"
+         class="btn btn-success">
+        <i class="bi bi-file-earmark-excel me-1"></i> Download Excel
+      </a>
+
+      <a href="{% url 'reports:yearly_salary_report' %}?company={{ selected_company.id }}&year={{ year }}"
+         class="btn btn-success">
+        <i class="bi bi-graph-up me-1"></i> Download Yearly Report
+      </a>
+
+      <form method="post"
+            action="{% url 'reports:reprocess_bank_snapshot' %}"
+            class="d-inline">
+        {% csrf_token %}
+        <input type="hidden" name="company" value="{{ selected_company.id }}">
+        <input type="hidden" name="month" value="{{ month }}">
+        <input type="hidden" name="year" value="{{ year }}">
+        <button type="submit"
+                class="btn btn-outline-warning"
+                onclick="return confirm('This will update bank snapshots for all transactions in this batch. Continue?')">
+          <i class="bi bi-arrow-repeat me-1"></i> Reprocess Bank Data
+        </button>
+      </form>
+
+    </div>
+
+  {% endif %}
 
 </div>
 {% endblock %}
