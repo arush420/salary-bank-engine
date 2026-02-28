@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Transaction Status Manager{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+  <h4 class="mb-1"><i class="bi bi-sliders me-2"></i>Transaction Status Manager</h4>
+  <p class="text-muted mb-4">View and manage Hold / Pending salary transactions before export.</p>
+
+  <!-- ================================ -->
+  <!-- FILTERS -->
+  <!-- ================================ -->
+  <form method="get" class="row g-2 mb-4 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">Company</label>
+      <select name="company" class="form-select">
+        <option value="">-- Select Company --</option>
+        {% for c in companies %}
+          <option value="{{ c.id }}" {% if selected_company.id == c.id %}selected{% endif %}>
+            {{ c.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label fw-semibold">Month</label>
+      <select name="month" class="form-select">
+        {% for m in months %}
+          <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label fw-semibold">Year</label>
+      <select name="year" class="form-select">
+        {% for y in years %}
+          <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label fw-semibold">Status Filter</label>
+      <select name="status" class="form-select">
+        <option value="ALL" {% if status_filter == "ALL" %}selected{% endif %}>All Statuses</option>
+        <option value="PENDING" {% if status_filter == "PENDING" %}selected{% endif %}>Pending</option>
+        <option value="HOLD" {% if status_filter == "HOLD" %}selected{% endif %}>Hold</option>
+        <option value="READY" {% if status_filter == "READY" %}selected{% endif %}>Ready for Export</option>
+        <option value="EXPORTED" {% if status_filter == "EXPORTED" %}selected{% endif %}>Exported</option>
+        <option value="COMPLETED" {% if status_filter == "COMPLETED" %}selected{% endif %}>Completed</option>
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-primary w-100">
+        <i class="bi bi-search me-1"></i> Apply
+      </button>
+    </div>
+  </form>
+
+  <!-- ================================ -->
+  <!-- SUMMARY BADGES -->
+  <!-- ================================ -->
+  {% if summary %}
+  <div class="d-flex gap-3 flex-wrap mb-4">
+    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
+      Pending: {{ summary.PENDING }}
+    </span>
+    <span class="badge bg-danger fs-6 px-3 py-2">
+      Hold: {{ summary.HOLD }}
+    </span>
+    <span class="badge bg-primary fs-6 px-3 py-2">
+      Ready: {{ summary.READY }}
+    </span>
+    <span class="badge bg-info text-dark fs-6 px-3 py-2">
+      Exported: {{ summary.EXPORTED }}
+    </span>
+    <span class="badge bg-success fs-6 px-3 py-2">
+      Completed: {{ summary.COMPLETED }}
+    </span>
+  </div>
+  {% endif %}
+
+  <!-- ================================ -->
+  <!-- TRANSACTIONS TABLE -->
+  <!-- ================================ -->
+  {% if transactions %}
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Emp Code</th>
+          <th>Name</th>
+          <th>Salary</th>
+          <th>Account</th>
+          <th>Status</th>
+          <th>Hold Reason</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in transactions %}
+        <tr>
+          <td>{{ txn.employee.emp_code }}</td>
+          <td>{{ txn.employee.name }}</td>
+          <td>₹{{ txn.salary_amount }}</td>
+          <td>
+            <small>{{ txn.account_number|default:"—" }}<br>
+            <span class="text-muted">{{ txn.ifsc|default:"" }}</span></small>
+          </td>
+
+          <!-- Status Badge -->
+          <td>
+            {% if txn.status == "HOLD" %}
+              <span class="badge bg-danger">Hold</span>
+            {% elif txn.status == "PENDING" %}
+              <span class="badge bg-warning text-dark">Pending</span>
+            {% elif txn.status == "READY" %}
+              <span class="badge bg-primary">Ready</span>
+            {% elif txn.status == "COMPLETED" %}
+              <span class="badge bg-success">Completed</span>
+            {% elif txn.status == "EXPORTED" %}
+              <span class="badge bg-info text-dark">Exported</span>
+            {% else %}
+              <span class="badge bg-secondary">{{ txn.status }}</span>
+            {% endif %}
+          </td>
+
+          <!-- Hold Reason -->
+          <td>
+            <small class="text-muted">{{ txn.hold_reason|default:"—" }}</small>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            {% if txn.status == "HOLD" %}
+              <!-- Remove Hold -->
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                <input type="hidden" name="action" value="unhold">
+                <button type="submit" class="btn btn-sm btn-outline-success">
+                  <i class="bi bi-play-circle"></i> Remove Hold
+                </button>
+              </form>
+
+            {% elif txn.status == "PENDING" %}
+              <!-- Place on Hold -->
+              <button type="button"
+                      class="btn btn-sm btn-outline-danger me-1"
+                      data-bs-toggle="modal"
+                      data-bs-target="#holdModal{{ txn.id }}">
+                <i class="bi bi-pause-circle"></i> Hold
+              </button>
+
+              <!-- Mark Ready -->
+              <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                <input type="hidden" name="action" value="mark_ready">
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                  <i class="bi bi-check-circle"></i> Mark Ready
+                </button>
+              </form>
+            {% else %}
+              <span class="text-muted small">No actions</span>
+            {% endif %}
+          </td>
+        </tr>
+
+        <!-- Hold Modal -->
+        {% if txn.status == "PENDING" %}
+        <div class="modal fade" id="holdModal{{ txn.id }}" tabindex="-1">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="transaction_id" value="{{ txn.id }}">
+                <input type="hidden" name="action" value="hold">
+                <div class="modal-header">
+                  <h5 class="modal-title">Hold Salary — {{ txn.employee.name }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                  <label class="form-label fw-semibold">
+                    Reason <span class="text-danger">*</span>
+                  </label>
+                  <textarea name="hold_reason"
+                            class="form-control"
+                            rows="3"
+                            placeholder="e.g. Missing documents, Bank details issue..."
+                            required></textarea>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-danger">Confirm Hold</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% elif selected_company %}
+    <div class="alert alert-info">No transactions found for selected filters.</div>
+  {% else %}
+    <div class="alert alert-secondary">Select a company and period to view transactions.</div>
+  {% endif %}
+
+</div>
+{% endblock %}

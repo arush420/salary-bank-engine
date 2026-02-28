@@ -1,9 +1,10 @@
 from datetime import date
 import pandas as pd
+from django.contrib import messages
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.db.models import Sum, Count
 
 from companies.models import Company
@@ -312,3 +313,106 @@ def bank_change_report(request):
     df.to_excel(response, index=False)
 
     return response
+
+@login_required
+def transaction_status_manager(request):
+    today = date.today()
+    organisation = request.user.organisation_user.organisation
+
+    month = int(request.GET.get("month", today.month))
+    year = int(request.GET.get("year", today.year))
+    company_id = request.GET.get("company")
+    status_filter = request.GET.get("status", "ALL")
+
+    companies = Company.objects.filter(organisation=organisation)
+    selected_company = None
+    transactions = SalaryTransaction.objects.none()
+
+    # -----------------------------------------------
+    # HANDLE POST — status change actions
+    # -----------------------------------------------
+    if request.method == "POST":
+        action = request.POST.get("action")
+        transaction_id = request.POST.get("transaction_id")
+        hold_reason = request.POST.get("hold_reason", "").strip()
+
+        txn = get_object_or_404(SalaryTransaction, id=transaction_id)
+
+        if action == "hold":
+            if not hold_reason:
+                messages.error(request, "Please provide a reason for holding.")
+            else:
+                txn.status = "HOLD"
+                txn.hold_reason = hold_reason
+                txn.save()
+                messages.success(request, f"{txn.employee.name} salary placed on hold.")
+
+        elif action == "unhold":
+            txn.status = "PENDING"
+            txn.hold_reason = None
+            txn.save()
+            messages.success(request, f"Hold removed for {txn.employee.name}.")
+
+        elif action == "mark_ready":
+            if txn.status == "PENDING":
+                txn.status = "READY"
+                txn.save()
+                messages.success(request, f"{txn.employee.name} marked as Ready for Export.")
+
+        return redirect(request.path + f"?month={month}&year={year}&company={company_id or ''}&status={status_filter}")
+
+    # -----------------------------------------------
+    # LOAD TRANSACTIONS
+    # -----------------------------------------------
+    if company_id:
+        selected_company = get_object_or_404(
+            Company,
+            id=company_id,
+            organisation=organisation
+        )
+
+        batch = SalaryBatch.objects.filter(
+            company=selected_company,
+            month=month,
+            year=year
+        ).first()
+
+        if batch:
+            transactions = SalaryTransaction.objects.filter(
+                batch=batch
+            ).select_related("employee")
+
+            if status_filter != "ALL":
+                transactions = transactions.filter(status=status_filter)
+
+    # -----------------------------------------------
+    # SUMMARY COUNTS
+    # -----------------------------------------------
+    summary = {}
+    if selected_company:
+        batch = SalaryBatch.objects.filter(
+            company=selected_company, month=month, year=year
+        ).first()
+        if batch:
+            all_txns = SalaryTransaction.objects.filter(batch=batch)
+            summary = {
+                "PENDING": all_txns.filter(status="PENDING").count(),
+                "HOLD":    all_txns.filter(status="HOLD").count(),
+                "READY":   all_txns.filter(status="READY").count(),
+                "EXPORTED": all_txns.filter(status="EXPORTED").count(),
+                "COMPLETED": all_txns.filter(status="COMPLETED").count(),
+            }
+
+    context = {
+        "companies": companies,
+        "selected_company": selected_company,
+        "transactions": transactions,
+        "month": month,
+        "year": year,
+        "months": range(1, 13),
+        "years": range(today.year - 3, today.year + 2),
+        "status_filter": status_filter,
+        "summary": summary,
+    }
+
+    return render(request, "reports/transaction_status_manager.html", context)
