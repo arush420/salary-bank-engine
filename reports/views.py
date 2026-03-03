@@ -328,6 +328,8 @@ def transaction_status_manager(request):
     companies = Company.objects.filter(organisation=organisation)
     selected_company = None
     transactions = SalaryTransaction.objects.none()
+    batch = None  # ← single shared variable
+    summary = {}
 
     # -----------------------------------------------
     # HANDLE POST — status change actions
@@ -360,10 +362,12 @@ def transaction_status_manager(request):
                 txn.save()
                 messages.success(request, f"{txn.employee.name} marked as Ready for Export.")
 
-        return redirect(request.path + f"?month={month}&year={year}&company={company_id or ''}&status={status_filter}")
+        return redirect(
+            request.path + f"?month={month}&year={year}&company={company_id or ''}&status={status_filter}"
+        )
 
     # -----------------------------------------------
-    # LOAD TRANSACTIONS
+    # LOAD TRANSACTIONS + SUMMARY
     # -----------------------------------------------
     if company_id:
         selected_company = get_object_or_404(
@@ -372,35 +376,22 @@ def transaction_status_manager(request):
             organisation=organisation
         )
 
-        batch = SalaryBatch.objects.filter(
+        batch = SalaryBatch.objects.filter(  # ← fetched once
             company=selected_company,
             month=month,
             year=year
         ).first()
 
         if batch:
-            transactions = SalaryTransaction.objects.filter(
-                batch=batch
-            ).select_related("employee")
+            all_txns = batch.transactions.select_related("employee")  # ← reuse batch
 
-            if status_filter != "ALL":
-                transactions = transactions.filter(status=status_filter)
+            transactions = all_txns.filter(status=status_filter) if status_filter != "ALL" else all_txns
 
-    # -----------------------------------------------
-    # SUMMARY COUNTS
-    # -----------------------------------------------
-    summary = {}
-    if selected_company:
-        batch = SalaryBatch.objects.filter(
-            company=selected_company, month=month, year=year
-        ).first()
-        if batch:
-            all_txns = SalaryTransaction.objects.filter(batch=batch)
-            summary = {
-                "PENDING": all_txns.filter(status="PENDING").count(),
-                "HOLD":    all_txns.filter(status="HOLD").count(),
-                "READY":   all_txns.filter(status="READY").count(),
-                "EXPORTED": all_txns.filter(status="EXPORTED").count(),
+            summary = {                                                # ← reuse all_txns
+                "PENDING":   all_txns.filter(status="PENDING").count(),
+                "HOLD":      all_txns.filter(status="HOLD").count(),
+                "READY":     all_txns.filter(status="READY").count(),
+                "EXPORTED":  all_txns.filter(status="EXPORTED").count(),
                 "COMPLETED": all_txns.filter(status="COMPLETED").count(),
             }
 
@@ -417,6 +408,7 @@ def transaction_status_manager(request):
     }
 
     return render(request, "reports/transaction_status_manager.html", context)
+
 
 @login_required
 def reprocess_bank_snapshot(request):

@@ -20,7 +20,7 @@ from payroll.utils import release_salary_holds
 # =====================================================
 # BANK CHANGE APPROVAL QUEUE
 # =====================================================
-
+@login_required
 def approval_queue(request):
     requests = BankChangeRequest.objects.filter(status="PENDING")
     return render(request, "banking/approval_queue.html", {"requests": requests})
@@ -29,7 +29,7 @@ def approval_queue(request):
 # =====================================================
 # APPROVE BANK CHANGE REQUEST
 # =====================================================
-
+@login_required
 def approve_request(request, id):
     req = get_object_or_404(BankChangeRequest, id=id)
 
@@ -229,7 +229,7 @@ def bulk_bank_upload(request):
 # =====================================================
 # BANK RESPONSE (UTR) UPLOAD
 # =====================================================
-
+@login_required
 def upload_bank_response(request):
     if request.method == "POST":
         form = BankResponseUploadForm(request.POST, request.FILES)
@@ -252,7 +252,11 @@ def upload_bank_response(request):
                 )
                 return redirect("banking:bank_response_upload")
 
-            df = pd.read_excel(file)
+            try:
+                df = pd.read_excel(file)
+            except Exception:
+                messages.error(request, "Invalid or corrupted Excel file.")
+                return redirect("banking:bank_response_upload")
 
             required_columns = {"emp_code", "status"}
             if not required_columns.issubset(df.columns):
@@ -261,6 +265,10 @@ def upload_bank_response(request):
                     "Bank response must contain emp_code and status columns."
                 )
                 return redirect("banking:bank_response_upload")
+
+            processed = 0
+            failed = 0
+            skipped = 0
 
             with transaction.atomic():
                 for _, row in df.iterrows():
@@ -272,36 +280,44 @@ def upload_bank_response(request):
                     txn = SalaryTransaction.objects.filter(
                         batch=batch,
                         employee__emp_code=emp_code,
-                        status="PENDING"
+                        status="EXPORTED"  # ← FIXED: was "PENDING"
                     ).first()
 
                     if not txn:
+                        skipped += 1
                         continue
 
                     if status == "SUCCESS":
                         txn.status = "PROCESSED"
                         txn.utr = utr
                         txn.failure_reason = None
+                        processed += 1
 
                     elif status == "FAILED":
                         txn.status = "FAILED"
                         txn.failure_reason = reason or "Bank processing failed"
+                        failed += 1
 
                     else:
+                        skipped += 1
                         continue
 
                     txn.bank_response_at = now()
                     txn.save()
 
-                # Auto-complete batch if no pending transactions
+                # Auto-complete batch if no exported transactions remain
                 if not SalaryTransaction.objects.filter(
                     batch=batch,
-                    status="PENDING"
+                    status="EXPORTED"  # ← FIXED: was "PENDING"
                 ).exists():
                     batch.status = "COMPLETED"
                     batch.save(update_fields=["status"])
 
-            messages.success(request, "Bank response processed successfully.")
+            messages.success(
+                request,
+                f"Bank response processed — "
+                f"Processed: {processed}, Failed: {failed}, Skipped: {skipped}."
+            )
             return redirect("dashboard:salary_dashboard")
 
     else:
@@ -312,7 +328,6 @@ def upload_bank_response(request):
         "banking/bank_response_upload.html",
         {"form": form}
     )
-
 
 # =====================================================
 # RETRY FAILED TRANSACTIONS

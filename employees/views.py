@@ -50,8 +50,14 @@ def request_bank_change(request, employee_id):
         }
     )
 
+@login_required
 def employee_list(request):
-    employees = Employee.objects.order_by("emp_code")
+    organisation = request.user.organisation_user.organisation
+
+    employees = Employee.objects.filter(
+        company__organisation=organisation
+    ).order_by("emp_code")
+
     return render(
         request,
         "employees/employee_list.html",
@@ -655,7 +661,7 @@ def request_employee_change(request, employee_id):
     )
 
 
-
+@login_required
 def apply_employee_change(request, request_id):
     change_req = get_object_or_404(
         EmployeeChangeRequest,
@@ -689,12 +695,24 @@ def approve_employee_change(request, employee_id):
     change_requests = employee.change_requests.filter(status="PENDING")
 
     if not change_requests.exists():
+        messages.info(request, "No pending changes to approve.")
         return redirect("employees:employee_profile", employee.id)
+
+    date_fields = {"joining_date", "exit_date"}
 
     with transaction.atomic():
         for req in change_requests:
             for field, values in req.changes.items():
-                setattr(employee, field, values["new"])  # ✅ FIXED
+                new_val = values["new"]
+
+                # Convert date strings back to date objects
+                if field in date_fields and new_val:
+                    try:
+                        new_val = datetime.strptime(new_val, "%Y-%m-%d").date()
+                    except (ValueError, TypeError):
+                        pass
+
+                setattr(employee, field, new_val)
 
             employee.save()
 
@@ -706,42 +724,12 @@ def approve_employee_change(request, employee_id):
             AuditLog.objects.create(
                 action="EMPLOYEE_PROFILE_UPDATED",
                 performed_by=request.user,
-                description=(
-                    f"Approved profile changes for "
-                    f"{employee.emp_code}: {req.changes}"
-                )
+                description=f"Approved profile changes for {employee.emp_code}: {req.changes}"
             )
 
-    return redirect("employees:employee_profile", employee.id)@staff_member_required
-def approve_employee_change(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
-    change_requests = employee.change_requests.filter(status="PENDING")
-
-    if not change_requests.exists():
-        return redirect("employees:employee_profile", employee.id)
-
-    with transaction.atomic():
-        for req in change_requests:
-            for field, values in req.changes.items():
-                setattr(employee, field, values["new"])  # ✅ FIXED
-
-            employee.save()
-
-            req.status = "APPROVED"
-            req.reviewed_by = request.user
-            req.reviewed_at = timezone.now()
-            req.save()
-
-            AuditLog.objects.create(
-                action="EMPLOYEE_PROFILE_UPDATED",
-                performed_by=request.user,
-                description=(
-                    f"Approved profile changes for "
-                    f"{employee.emp_code}: {req.changes}"
-                )
-            )
-
+    messages.success(request, f"Profile changes approved for {employee.name}.")
     return redirect("employees:employee_profile", employee.id)
+
 
 @login_required
 def reject_employee_change(request, employee_id):

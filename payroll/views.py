@@ -258,20 +258,25 @@ def finalize_batch(request, batch_id):
         messages.error(request, "Only draft batches can be finalized.")
         return redirect("payroll:batch_detail", batch_id=batch.id)
 
-    # Validation before finalize
     if batch.transactions.count() == 0:
-        messages.error(request, "Cannot finalize empty batch.")
-        return redirect("payroll:batch_detail", batch.id)
+        messages.error(request, "Cannot finalize an empty batch.")
+        return redirect("payroll:batch_detail", batch_id=batch.id)
 
     if batch.transactions.filter(status="HOLD").exists():
-        messages.error(request, "Resolve HOLD transactions before finalizing.")
-        return redirect("payroll:batch_detail", batch.id)
+        messages.error(request, "Resolve all HOLD transactions before finalizing.")
+        return redirect("payroll:batch_detail", batch_id=batch.id)
 
-    batch.status = "READY"
-    batch.save(update_fields=["status"])
+    if batch.transactions.filter(account_number__isnull=True).exists():
+        messages.error(request, "Some employees are missing bank account details.")
+        return redirect("payroll:batch_detail", batch_id=batch.id)
 
-    messages.success(request, "Batch finalized successfully.")
-    return redirect("payroll:batch_detail", batch.id)
+    with transaction.atomic():
+        batch.transactions.filter(status="PENDING").update(status="EXPORTED")
+        batch.status = "EXPORTED"
+        batch.save(update_fields=["status"])
+
+    messages.success(request, "Batch finalized and marked as exported.")
+    return redirect("payroll:batch_detail", batch_id=batch.id)
 
 @login_required
 def export_batch(request, batch_id):
