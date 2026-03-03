@@ -332,7 +332,7 @@ def upload_bank_response(request):
 # =====================================================
 # RETRY FAILED TRANSACTIONS
 # =====================================================
-
+@login_required
 def retry_failed_transactions(request, batch_id):
     batch = get_object_or_404(SalaryBatch, id=batch_id)
 
@@ -381,7 +381,7 @@ def retry_failed_transactions(request, batch_id):
 # =====================================================
 # EXPORT BANK FILE
 # =====================================================
-
+@login_required
 def export_bank_file(request, month, year):
 
     company = request.user.organisation_user.organisation.company

@@ -53,7 +53,24 @@ def upload_salary(request):
         file = form.cleaned_data["file"]
 
         # -----------------------------
-        # Get or Create Batch
+        # Read & Validate Excel FIRST ← moved up
+        # -----------------------------
+        try:
+            df = pd.read_excel(file)
+        except Exception:
+            messages.error(request, "Invalid or corrupted Excel file.")
+            return redirect("payroll:salary_upload")
+
+        required_columns = {"site_code", "emp_code", "emp_name", "salary"}
+        if not required_columns.issubset(df.columns):
+            messages.error(
+                request,
+                f"Excel must contain columns: {', '.join(sorted(required_columns))}"
+            )
+            return redirect("payroll:salary_upload")
+
+        # -----------------------------
+        # Get or Create Batch ← moved down, only runs if file is valid
         # -----------------------------
         batch, _ = SalaryBatch.objects.get_or_create(
             company=company,
@@ -72,27 +89,6 @@ def upload_salary(request):
             messages.error(request, "Only DRAFT batches can be modified.")
             return redirect("payroll:batch_detail", batch_id=batch.id)
 
-        # -----------------------------
-        # Read Excel File
-        # -----------------------------
-        try:
-            df = pd.read_excel(file)
-        except Exception:
-            messages.error(request, "Invalid or corrupted Excel file.")
-            return redirect("payroll:salary_upload")
-
-        # -----------------------------
-        # Validate Required Columns
-        # -----------------------------
-        required_columns = {"site_code", "emp_code", "emp_name", "salary"}
-
-        if not required_columns.issubset(df.columns):
-            messages.error(
-                request,
-                f"Excel must contain columns: {', '.join(sorted(required_columns))}"
-            )
-            return redirect("payroll:salary_upload")
-
         created = 0
         updated = 0
         skipped = 0
@@ -108,17 +104,14 @@ def upload_salary(request):
                 site_code = row.get("site_code")
                 salary_amount = row.get("salary")
 
-                # Skip invalid salary
                 if pd.isna(salary_amount) or salary_amount <= 0:
                     skipped += 1
                     continue
 
-                # Optional: Validate site_code
                 if hasattr(company, "site_code") and site_code != company.site_code:
                     skipped += 1
                     continue
 
-                # Validate employee
                 try:
                     employee = Employee.objects.get(
                         emp_code=emp_code,
@@ -128,7 +121,6 @@ def upload_salary(request):
                     skipped += 1
                     continue
 
-                # Salary Hold Logic
                 hold, reason = should_hold_salary(employee)
 
                 bank = EmployeeBankAccount.objects.filter(
@@ -153,9 +145,6 @@ def upload_salary(request):
                 else:
                     updated += 1
 
-        # -----------------------------
-        # Final Success Message
-        # -----------------------------
         messages.success(
             request,
             f"Upload completed successfully — "
@@ -180,7 +169,8 @@ def upload_salary(request):
 @login_required
 def download_salary_template(request, company_id):
 
-    company = get_object_or_404(Company, id=company_id)
+    organisation = request.user.organisation_user.organisation
+    company = get_object_or_404(Company, id=company_id, organisation=organisation)
 
     employees = Employee.objects.filter(
         company=company,
@@ -214,21 +204,23 @@ def download_salary_template(request, company_id):
 
 @login_required
 def salary_batch_list(request):
-    company = request.user.organisation_user.organisation.company
+    organisation = request.user.organisation_user.organisation
 
     batches = SalaryBatch.objects.filter(
-        company=company
-    ).prefetch_related("transactions")
+        company__organisation=organisation
+    ).prefetch_related("transactions").order_by("-year", "-month")
 
-    return render(
-        request,
-        "payroll/batch_list.html",
-        {"batches": batches}
-    )
+    return render(request, "payroll/batch_list.html", {"batches": batches})
+
 
 @login_required
 def salary_batch_detail(request, batch_id):
-    batch = get_object_or_404(SalaryBatch, id=batch_id)
+    organisation = request.user.organisation_user.organisation
+    batch = get_object_or_404(
+        SalaryBatch,
+        id=batch_id,
+        company__organisation=organisation
+    )
 
     transactions = batch.transactions.select_related("employee")
     summary = {
@@ -237,6 +229,7 @@ def salary_batch_detail(request, batch_id):
         "hold": transactions.filter(status="HOLD").count(),
         "processed": transactions.filter(status="PROCESSED").count(),
         "failed": transactions.filter(status="FAILED").count(),
+        "exported": transactions.filter(status="EXPORTED").count(),
     }
 
     return render(
@@ -282,17 +275,29 @@ def finalize_batch(request, batch_id):
 def export_batch(request, batch_id):
     batch = get_object_or_404(SalaryBatch, id=batch_id)
 
-    if batch.status != "READY":
-        messages.error(request, "Only READY batches can be exported.")
-        return redirect("payroll:batch_detail", batch.id)
+    if batch.status != "EXPORTED":
+        messages.error(request, "Only exported batches can generate a bank file.")
+        return redirect("payroll:batch_detail", batch_id=batch.id)
 
-    # Final validation
-    if batch.transactions.filter(account_number__isnull=True).exists():
-        messages.error(request, "Some employees do not have bank accounts.")
-        return redirect("payroll:batch_detail", batch.id)
+    transactions = batch.transactions.filter(
+        status="EXPORTED"
+    ).select_related("employee")
 
-    batch.status = "EXPORTED"
-    batch.save(update_fields=["status"])
+    rows = [
+        {
+            "Emp Code": txn.employee.emp_code,
+            "Employee Name": txn.employee.name,
+            "Account Number": txn.account_number,
+            "IFSC": txn.ifsc,
+            "Salary": txn.salary_amount,
+        }
+        for txn in transactions
+    ]
 
-    messages.success(request, "Batch exported successfully.")
-    return redirect("payroll:batch_detail", batch.id)
+    df = pd.DataFrame(rows)
+    response = HttpResponse(
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    response["Content-Disposition"] = f'attachment; filename="bank_file_{batch.month}_{batch.year}.xlsx"'
+    df.to_excel(response, index=False)
+    return response

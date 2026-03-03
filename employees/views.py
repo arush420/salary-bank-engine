@@ -67,7 +67,13 @@ def employee_list(request):
 
 @login_required
 def employee_profile(request, employee_id):
-    employee = get_object_or_404(Employee, id=employee_id)
+    organisation = request.user.organisation_user.organisation
+
+    employee = get_object_or_404(
+        Employee,
+        id=employee_id,
+        company__organisation=organisation  # ← users can only access their org's employees
+    )
 
     bank_form = BankChangeRequestForm()
 
@@ -130,6 +136,8 @@ def employee_profile(request, employee_id):
 
 @login_required
 def employee_draft_create(request):
+    organisation = request.user.organisation_user.organisation  # ← get org once
+
     if request.method == "POST":
         form = EmployeeDraftForm(request.POST)
 
@@ -138,24 +146,27 @@ def employee_draft_create(request):
             messages.error(request, "Please select a company.")
             return redirect("employees:employee_draft_create")
 
-        company = get_object_or_404(Company, id=company_id)
+        company = get_object_or_404(
+            Company,
+            id=company_id,
+            organisation=organisation  # ← prevents selecting another org's company
+        )
 
         if form.is_valid():
             draft = form.save(commit=False)
-            draft.company = company          # 🔑 REQUIRED
+            draft.company = company
             draft.created_by = request.user
             draft.status = "PENDING"
             draft.save()
 
-            messages.success(
-                request,
-                "Employee draft submitted for approval."
-            )
+            messages.success(request, "Employee draft submitted for approval.")
             return redirect("employees:employee_draft_list")
     else:
         form = EmployeeDraftForm()
 
-    companies = Company.objects.order_by("name")
+    companies = Company.objects.filter(
+        organisation=organisation  # ← only show this org's companies
+    ).order_by("name")
 
     return render(
         request,
@@ -165,6 +176,7 @@ def employee_draft_create(request):
             "companies": companies,
         }
     )
+
 
 
 
@@ -532,18 +544,6 @@ def upload_employee_drafts(request):
 
     return render(request, "employees/employee_draft_upload.html")
 
-
-@login_required
-def preview_employee_drafts(request):
-    preview = request.session.get("draft_upload_preview")
-    return render(request, "employees/employee_draft_preview.html", {
-        "preview": preview
-    })
-
-@login_required
-def confirm_employee_drafts(request):
-    preview = request.session.get("draft_upload_preview")
-    # Save only rows with OK / WARNING
 
 
 @login_required
