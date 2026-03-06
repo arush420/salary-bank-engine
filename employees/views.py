@@ -352,20 +352,33 @@ def reject_employee_draft(request, draft_id):
 
 @login_required
 def download_employee_draft_template(request):
-    from companies.models import Company
 
-    org = request.user.organisation_user.organisation
+    company_id = request.GET.get("company")
 
-    # Get last draft within same organisation
+    if not company_id:
+        return HttpResponse("Company required", status=400)
+
+    org = request.user.organisation_user.organisation  # ← add this
+    company = get_object_or_404(Company, id=company_id, organisation=org)
+
     last = (
         EmployeeDraft.objects
-        .filter(company__organisation=org)
+        .filter(company=company)
         .order_by("-created_at")
         .first()
     )
 
+    # If no draft exists, check real employees
+    if not last:
+        last = (
+            Employee.objects
+            .filter(company=company)
+            .order_by("-id")
+            .first()
+        )
+
     data = [{
-        "site_code": last.company.site_code if last else "",
+        "site_code": company.site_code,
         "emp_code": last.emp_code if last else "",
         "name": last.name if last else "",
         "father_name": last.father_name if last else "",
@@ -381,10 +394,12 @@ def download_employee_draft_template(request):
     response = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-    response["Content-Disposition"] = "attachment; filename=employee_draft_template.xlsx"
+
+    filename = f"{company.name}_employee_template.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
 
     with pd.ExcelWriter(response, engine="openpyxl") as writer:
-        df.to_excel(writer, index=False, sheet_name="Draft Template")
+        df.to_excel(writer, index=False)
 
     return response
 
