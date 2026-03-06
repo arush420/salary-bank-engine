@@ -5,6 +5,7 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 import pandas as pd
 from django.template.defaulttags import now
+from django.db.models import Q
 
 from companies.models import Company
 from payroll.models import SalaryTransaction
@@ -18,7 +19,7 @@ from banking.models import EmployeeBankAccount, BankChangeRequest
 
 from django.contrib.admin.views.decorators import staff_member_required
 from django.utils import timezone
-
+from django.core.paginator import Paginator
 
 
 
@@ -50,20 +51,37 @@ def request_bank_change(request, employee_id):
         }
     )
 
+
 @login_required
 def employee_list(request):
-    organisation = request.user.organisation_user.organisation
+    search = request.GET.get("search", "").strip()
 
-    employees = Employee.objects.filter(
-        company__organisation=organisation
-    ).order_by("emp_code")
+    employees = Employee.objects.select_related("company").order_by("emp_code")
+
+    if search:
+        employees = employees.filter(
+            Q(emp_code__icontains=search) |
+            Q(name__icontains=search) |
+            Q(father_name__icontains=search) |
+            Q(uan_number__icontains=search) |
+            Q(esic_number__icontains=search) |
+            Q(company__name__icontains=search)
+        )
+    else:
+        employees = Employee.objects.none()
+
+    paginator = Paginator(employees, 20)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
 
     return render(
         request,
         "employees/employee_list.html",
-        {"employees": employees}
+        {
+            "employees": page_obj,
+            "search": search,
+        }
     )
-
 
 @login_required
 def employee_profile(request, employee_id):

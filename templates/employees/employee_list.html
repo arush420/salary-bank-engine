@@ -2,62 +2,157 @@
 {% block title %}Employees{% endblock %}
 
 {% block content %}
-<h2>Employees</h2>
+<div class="container-fluid py-3">
 
-<div class="mb-3 d-flex gap-2">
-    {% if not request.user.is_staff %}
-        <a class="btn btn-success"
-           href="{% url 'employees:upload_employee_drafts' %}">
-            📤 Bulk Employee Upload
-        </a>
-    {% endif %}
-
-    {% if request.user.is_staff %}
-        <a class="btn btn-outline-primary"
-           href="{% url 'employees:employee_draft_approval_list' %}">
-            🛡 Employee Approvals
-        </a>
-    {% endif %}
-</div>
-
-<div class="table-responsive">
-<table class="table table-bordered table-hover align-middle">
-    <thead class="table-light">
-        <tr>
-            <th>Emp Code</th>
-            <th>Name</th>
-            <th>Status</th>
-            <th class="text-center">Profile</th>
-        </tr>
-    </thead>
-
-    <tbody>
-        {% for e in employees %}
-        <tr>
-            <td>{{ e.emp_code }}</td>
-            <td>{{ e.name }}</td>
-            <td>
-                {% if e.exit_date %}
-                    <span class="badge bg-secondary">Left</span>
-                {% else %}
-                    <span class="badge bg-success">Active</span>
-                {% endif %}
-            </td>
-            <td class="text-center">
-                <a href="{% url 'employees:employee_profile' e.id %}"
-                   class="btn btn-sm btn-outline-primary">
-                    View
+    <!-- PAGE HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Employee Directory</h4>
+            <small class="text-muted">Search and manage employee records</small>
+        </div>
+        <div class="d-flex gap-2">
+            {% if not request.user.is_staff %}
+                <a class="btn btn-success btn-sm" href="{% url 'employees:upload_employee_drafts' %}">
+                    <i class="bi bi-upload me-1"></i> Bulk Upload
                 </a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="4" class="text-center text-muted">
-                No employees found
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+            {% endif %}
+            {% if request.user.is_staff %}
+                <a class="btn btn-outline-primary btn-sm" href="{% url 'employees:employee_draft_approval_list' %}">
+                    <i class="bi bi-shield-check me-1"></i> Approvals
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- SEARCH -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body py-3 px-4">
+            <form method="get">
+                <div class="input-group input-group-lg">
+                    <span class="input-group-text bg-white border-end-0 text-muted">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input
+                        type="text"
+                        name="search"
+                        class="form-control border-start-0 border-end-0 ps-0"
+                        placeholder="Search by name, emp code, father name, UAN, ESIC or company..."
+                        value="{{ search }}"
+                        autofocus
+                    >
+                    {% if search %}
+                        <a href="{% url 'employees:employee_list' %}"
+                           class="btn btn-light border text-muted d-flex align-items-center"
+                           title="Clear">
+                            <i class="bi bi-x-lg"></i>
+                        </a>
+                    {% endif %}
+                    <button type="submit" class="btn btn-primary px-4">
+                        Search
+                    </button>
+                </div>
+            </form>
+            <p class="text-muted mb-0 mt-2" style="font-size:0.78rem;">
+                <i class="bi bi-info-circle me-1"></i>
+                Searches across: Emp Code &middot; Name &middot; Father Name &middot; UAN &middot; ESIC &middot; Company
+            </p>
+        </div>
+    </div>
+
+    <!-- RESULTS -->
+    {% if search %}
+
+        <!-- Result count -->
+        <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+            <p class="text-muted small mb-0">
+                {% if employees %}
+                    Found <strong>{{ employees|length }}</strong> result{{ employees|length|pluralize }}
+                    for <strong>"{{ search }}"</strong>
+                    {% if employees|length == 50 %}
+                        &mdash; <span class="text-warning">showing first 50, refine your search</span>
+                    {% endif %}
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="text-uppercase small text-muted fw-semibold"
+                           style="background:#f8f9fa; font-size:0.72rem; letter-spacing:0.04em;">
+                        <tr>
+                            <th class="ps-4 py-3">Emp Code</th>
+                            <th class="py-3">Name</th>
+                            <th class="py-3">Father Name</th>
+                            <th class="py-3">Company</th>
+                            <th class="py-3">UAN</th>
+                            <th class="py-3">ESIC</th>
+                            <th class="py-3">Status</th>
+                            <th class="py-3 text-center pe-4">Profile</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in employees %}
+                        <tr>
+                            <td class="ps-4 py-3">
+                                <span class="fw-semibold text-primary">{{ e.emp_code }}</span>
+                            </td>
+                            <td class="py-3 fw-medium">{{ e.name }}</td>
+                            <td class="py-3 text-muted small">{{ e.father_name|default:"—" }}</td>
+                            <td class="py-3">
+                                <span class="badge bg-light text-dark border fw-normal">
+                                    {{ e.company.name }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-muted small">{{ e.uan_number|default:"—" }}</td>
+                            <td class="py-3 text-muted small">{{ e.esic_number|default:"—" }}</td>
+                            <td class="py-3">
+                                {% if e.exit_date %}
+                                    <span class="badge rounded-pill bg-light text-secondary border"
+                                          style="font-size:0.75rem;">
+                                        <i class="bi bi-dash-circle me-1"></i>Left
+                                    </span>
+                                {% else %}
+                                    <span class="badge rounded-pill bg-white text-success border border-success"
+                                          style="font-size:0.75rem;">
+                                        <i class="bi bi-check-circle-fill me-1"></i>Active
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-center pe-4">
+                                <a href="{% url 'employees:employee_profile' e.id %}"
+                                   class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    <i class="bi bi-person me-1"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-5">
+                                <i class="bi bi-search d-block mb-2" style="font-size:2rem; opacity:0.3;"></i>
+                                No results for <strong>"{{ search }}"</strong>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    {% else %}
+
+        <!-- EMPTY STATE -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5 text-muted">
+                <i class="bi bi-person-lines-fill d-block mb-3" style="font-size:3rem; opacity:0.2;"></i>
+                <h6 class="fw-semibold mb-1">Search for an employee</h6>
+                <p class="small mb-0">
+                    Try an emp code, name, father name, UAN, ESIC or company name.
+                </p>
+            </div>
+        </div>
+
+    {% endif %}
+
 </div>
 {% endblock %}

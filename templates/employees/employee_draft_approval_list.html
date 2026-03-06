@@ -1,6 +1,30 @@
 {% extends "base.html" %}
 {% block title %}Employee Draft Approvals{% endblock %}
 
+{% block extra_css %}
+<style>
+    .conflict-list {
+        color: #dc3545;
+        margin: 0;
+        padding-left: 18px;
+    }
+
+    .no-conflicts { color: #28a745; }
+
+    .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 
 <h2>🛡 Employee Draft Approvals</h2>
@@ -21,89 +45,58 @@
                 <th>Actions</th>
             </tr>
         </thead>
-
         <tbody>
-        {% for item in draft_data %}
+            {% for item in draft_data %}
+            {% with d=item.draft %}
             <tr>
-                <td>{{ item.draft.company }}</td>
-                <td>{{ item.draft.emp_code }}</td>
-                <td>{{ item.draft.name }}</td>
-                <td>{{ item.draft.uan_number|default:"—" }}</td>
-                <td>{{ item.draft.esic_number|default:"—" }}</td>
-                <td>{{ item.draft.created_by|default:"—" }}</td>
+                <td>{{ d.company }}</td>
+                <td>{{ d.emp_code }}</td>
+                <td>{{ d.name }}</td>
+                <td>{{ d.uan_number|default:"—" }}</td>
+                <td>{{ d.esic_number|default:"—" }}</td>
+                <td>{{ d.created_by|default:"—" }}</td>
 
                 <td>
                     {% if item.conflicts %}
-                        <ul class="conflict-list">
-                            {% for conflict in item.conflicts %}
-                                <li>{{ conflict }}</li>
-                            {% endfor %}
-                        </ul>
+                    <ul class="conflict-list">
+                        {% for conflict in item.conflicts %}
+                        <li>{{ conflict }}</li>
+                        {% endfor %}
+                    </ul>
                     {% else %}
-                        <span class="no-conflicts">✔ No conflicts</span>
+                    <span class="no-conflicts">✔ No conflicts</span>
                     {% endif %}
                 </td>
 
                 <td>
                     {% if item.can_approve %}
-                        <a class="btn btn-success btn-sm"
-                           href="{% url 'employees:approve_employee_draft' item.draft.id %}"
-                           aria-label="Approve draft for {{ item.draft.name }}">
-                            Approve
-                        </a>
+                    <a class="btn btn-success btn-sm"
+                       href="{% url 'employees:approve_employee_draft' d.id %}"
+                       aria-label="Approve draft for {{ d.name }}">Approve</a>
                     {% else %}
-                        <button class="btn btn-secondary btn-sm"
-                                disabled
-                                aria-label="Cannot approve draft for {{ item.draft.name }}">
-                            Cannot Approve
-                        </button>
+                    <button class="btn btn-secondary btn-sm"
+                            disabled
+                            aria-label="Cannot approve draft for {{ d.name }}">Cannot Approve</button>
                     {% endif %}
 
                     {% if item.merge_candidate %}
-                        <a class="btn btn-warning btn-sm"
-                           href="{% url 'employees:merge_employee_draft' item.draft.id %}"
-                           aria-label="Merge draft for {{ item.draft.name }}">
-                            🔁 Merge
-                        </a>
+                    <a class="btn btn-warning btn-sm"
+                       href="{% url 'employees:merge_employee_draft' d.id %}"
+                       aria-label="Merge draft for {{ d.name }}">🔁 Merge</a>
                     {% endif %}
 
                     <a class="btn btn-danger btn-sm"
-                       href="{% url 'employees:reject_employee_draft' item.draft.id %}"
-                       aria-label="Reject draft for {{ item.draft.name }}">
-                        Reject
-                    </a>
+                       href="{% url 'employees:reject_employee_draft' d.id %}"
+                       aria-label="Reject draft for {{ d.name }}">Reject</a>
                 </td>
             </tr>
-        {% endfor %}
+            {% endwith %}
+            {% endfor %}
         </tbody>
     </table>
 </div>
-
 {% else %}
-    <p class="mt-3">No pending drafts 🎉</p>
+<p class="mt-3">No pending drafts 🎉</p>
 {% endif %}
 
 {% endblock %}
-
-
-.conflict-list {
-    color: #dc3545;
-    margin: 0;
-    padding-left: 18px;
-}
-
-.no-conflicts {
-    color: #28a745;
-}
-
-.visually-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border-width: 0;
-}
