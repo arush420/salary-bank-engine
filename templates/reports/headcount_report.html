@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Monthly Headcount{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Monthly Headcount Report</h4>
+            <small class="text-muted">Active employees with joining & exit summary</small>
+        </div>
+        <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body px-4 py-3">
+            <form method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label fw-medium small">Company</label>
+                        <select name="company" class="form-select form-select-sm" required>
+                            <option value="">Select Company</option>
+                            {% for c in companies %}
+                                <option value="{{ c.id }}" {% if selected_company.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-medium small">Month</label>
+                        <select name="month" class="form-select form-select-sm">
+                            <option value="1"  {% if month == 1  %}selected{% endif %}>January</option>
+                            <option value="2"  {% if month == 2  %}selected{% endif %}>February</option>
+                            <option value="3"  {% if month == 3  %}selected{% endif %}>March</option>
+                            <option value="4"  {% if month == 4  %}selected{% endif %}>April</option>
+                            <option value="5"  {% if month == 5  %}selected{% endif %}>May</option>
+                            <option value="6"  {% if month == 6  %}selected{% endif %}>June</option>
+                            <option value="7"  {% if month == 7  %}selected{% endif %}>July</option>
+                            <option value="8"  {% if month == 8  %}selected{% endif %}>August</option>
+                            <option value="9"  {% if month == 9  %}selected{% endif %}>September</option>
+                            <option value="10" {% if month == 10 %}selected{% endif %}>October</option>
+                            <option value="11" {% if month == 11 %}selected{% endif %}>November</option>
+                            <option value="12" {% if month == 12 %}selected{% endif %}>December</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">Year</label>
+                        <select name="year" class="form-select form-select-sm">
+                            {% for y in years %}
+                                <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">View</button>
+                        {% if selected_company and rows %}
+                            <a href="?company={{ selected_company.id }}&month={{ month }}&year={{ year }}&export=excel"
+                               class="btn btn-success btn-sm w-100">⬇ Excel</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_company %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Active Employees</div>
+                    <div class="fw-bold fs-3 text-success">{{ totals.active }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Joined in {{ month_name }}</div>
+                    <div class="fw-bold fs-3 text-primary">{{ totals.joined }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Left in {{ month_name }}</div>
+                    <div class="fw-bold fs-3 text-danger">{{ totals.left }}</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 shadow-sm text-center p-3">
+                    <div class="text-muted small">Total Exited (All Time)</div>
+                    <div class="fw-bold fs-3 text-secondary">{{ totals.exited }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom px-4 py-3">
+                <span class="fw-semibold small">Active Employees — {{ month_name }} {{ year }}</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8f9fa; font-size:0.72rem; letter-spacing:0.04em;">
+                        <tr class="text-uppercase text-muted fw-semibold">
+                            <th class="ps-4 py-3">Emp Code</th>
+                            <th class="py-3">Name</th>
+                            <th class="py-3">Father Name</th>
+                            <th class="py-3">UAN</th>
+                            <th class="py-3">ESIC</th>
+                            <th class="py-3">Joining Date</th>
+                            <th class="py-3">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in rows %}
+                        <tr>
+                            <td class="ps-4 py-2 fw-semibold small">{{ e.emp_code }}</td>
+                            <td class="py-2">
+                                {{ e.name }}
+                                {% if e.joining_date.month == month and e.joining_date.year == year %}
+                                    <span class="badge bg-primary-subtle text-primary ms-1" style="font-size:0.65rem;">New</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-2 small text-muted">{{ e.father_name|default:"—" }}</td>
+                            <td class="py-2 small text-muted">{{ e.uan_number|default:"—" }}</td>
+                            <td class="py-2 small text-muted">{{ e.esic_number|default:"—" }}</td>
+                            <td class="py-2 small">{{ e.joining_date }}</td>
+                            <td class="py-2">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">Active</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted py-4">No active employees found for this period.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% else %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5 text-muted">
+                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">👥</span>
+                <p class="mb-0">Select a company and period to view the headcount report.</p>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

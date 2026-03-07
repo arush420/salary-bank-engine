@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Bank Change Report{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Bank Change Report</h4>
+            <small class="text-muted">Track employee bank account change requests</small>
+        </div>
+        <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body px-4 py-3">
+            <form method="get">
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-medium small">Company</label>
+                        <select name="company" class="form-select form-select-sm">
+                            <option value="">All Companies</option>
+                            {% for c in companies %}
+                                <option value="{{ c.id }}" {% if company_id == c.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ c.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">Month</label>
+                        <select name="month" class="form-select form-select-sm">
+                            <option value="">All Months</option>
+                            <option value="1"  {% if month == "1"  %}selected{% endif %}>January</option>
+                            <option value="2"  {% if month == "2"  %}selected{% endif %}>February</option>
+                            <option value="3"  {% if month == "3"  %}selected{% endif %}>March</option>
+                            <option value="4"  {% if month == "4"  %}selected{% endif %}>April</option>
+                            <option value="5"  {% if month == "5"  %}selected{% endif %}>May</option>
+                            <option value="6"  {% if month == "6"  %}selected{% endif %}>June</option>
+                            <option value="7"  {% if month == "7"  %}selected{% endif %}>July</option>
+                            <option value="8"  {% if month == "8"  %}selected{% endif %}>August</option>
+                            <option value="9"  {% if month == "9"  %}selected{% endif %}>September</option>
+                            <option value="10" {% if month == "10" %}selected{% endif %}>October</option>
+                            <option value="11" {% if month == "11" %}selected{% endif %}>November</option>
+                            <option value="12" {% if month == "12" %}selected{% endif %}>December</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">Year</label>
+                        <select name="year" class="form-select form-select-sm">
+                            <option value="">All Years</option>
+                            {% for y in years %}
+                                <option value="{{ y }}" {% if year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">Status</label>
+                        <select name="status" class="form-select form-select-sm">
+                            {% for s in status_choices %}
+                                <option value="{{ s }}" {% if status == s %}selected{% endif %}>{{ s }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">
+                            <i class="bi bi-funnel me-1"></i> Filter
+                        </button>
+                        {% if requests %}
+                            <a href="?company={{ company_id }}&month={{ month }}&year={{ year }}&status={{ status }}&export=excel"
+                               class="btn btn-success btn-sm w-100">
+                                <i class="bi bi-download me-1"></i> Excel
+                            </a>
+                        {% endif %}
+                    </div>
+
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Summary strip -->
+    {% if requests %}
+    <div class="row g-3 mb-4">
+        <div class="col-auto">
+            <div class="card border-0 shadow-sm px-4 py-3 d-flex flex-row align-items-center gap-3">
+                <span class="text-muted small">Total Requests</span>
+                <span class="fw-bold fs-5">{{ requests|length }}</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Table -->
+    <div class="card border-0 shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead style="background:#f8f9fa; font-size:0.72rem; letter-spacing:0.04em;">
+                    <tr class="text-uppercase text-muted fw-semibold">
+                        <th class="ps-4 py-3">Company</th>
+                        <th class="py-3">Emp Code</th>
+                        <th class="py-3">Employee</th>
+                        <th class="py-3">New Bank</th>
+                        <th class="py-3">New Account</th>
+                        <th class="py-3">IFSC</th>
+                        <th class="py-3">Effective</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Submitted By</th>
+                        <th class="py-3">Approved By</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in requests %}
+                    <tr>
+                        <td class="ps-4 py-2 small text-muted">{{ r.employee.company.name }}</td>
+                        <td class="py-2 fw-semibold small">{{ r.employee.emp_code }}</td>
+                        <td class="py-2">{{ r.employee.name }}</td>
+                        <td class="py-2 small">{{ r.new_bank_name|default:"—" }}</td>
+                        <td class="py-2 small">{{ r.new_account_number|default:"—" }}</td>
+                        <td class="py-2 small">{{ r.new_ifsc|default:"—" }}</td>
+                        <td class="py-2 small text-muted">
+                            {{ r.effective_month }}/{{ r.effective_year }}
+                        </td>
+                        <td class="py-2">
+                            {% if r.status == "APPROVED" %}
+                                <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">Approved</span>
+                            {% elif r.status == "PENDING" %}
+                                <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:0.7rem;">Pending</span>
+                            {% elif r.status == "REJECTED" %}
+                                <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:0.7rem;">Rejected</span>
+                            {% else %}
+                                <span class="badge bg-light text-secondary border" style="font-size:0.7rem;">{{ r.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 small text-muted">{{ r.submitted_by.username }}</td>
+                        <td class="py-2 small text-muted">{{ r.approved_by.username|default:"—" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-5">
+                            <span class="d-block mb-2" style="font-size:2rem; opacity:0.2;">🔄</span>
+                            No bank change requests found for the selected filters.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,6 +1,6 @@
 from datetime import datetime, date
 
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.http import HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
 import pandas as pd
@@ -175,6 +175,18 @@ def employee_draft_create(request):
             draft.company = company
             draft.created_by = request.user
             draft.status = "PENDING"
+
+            def to_nullable(val):
+                if not val:
+                    return None
+                val = str(val).strip()
+                if val in ("", "0", "0.0", "None", "nan", "-", "—"):
+                    return None
+                return val
+
+            draft.uan_number = draft.uan_number or None  # ← add these 3 lines
+            draft.esic_number = draft.esic_number or None
+            draft.document_number = draft.document_number or None
             draft.save()
 
             messages.success(request, "Employee draft submitted for approval.")
@@ -194,160 +206,6 @@ def employee_draft_create(request):
             "companies": companies,
         }
     )
-
-
-
-
-@login_required
-def employee_draft_list(request):
-    drafts = EmployeeDraft.objects.filter(status="PENDING").order_by("-created_at")
-    return render(
-        request,
-        "employees/employee_draft_list.html",
-        {"drafts": drafts}
-    )
-
-@login_required
-def employee_draft_approval_list(request):
-    drafts = EmployeeDraft.objects.filter(status="PENDING").select_related("company")
-
-    draft_data = []
-
-    for draft in drafts:
-        conflicts = []
-        merge_candidate = None
-
-        # 🔴 HARD CONFLICT CHECKS
-        if draft.esic_number and Employee.objects.filter(esic_number=draft.esic_number).exists():
-            conflicts.append("ESIC already exists")
-
-        if draft.uan_number and Employee.objects.filter(uan_number=draft.uan_number).exists():
-            conflicts.append("UAN already exists")
-
-        if draft.document_number and Employee.objects.filter(
-            document_number=draft.document_number
-        ).exists():
-            conflicts.append("Document number already exists")
-
-        if Employee.objects.filter(
-            company=draft.company,
-            emp_code=draft.emp_code
-        ).exists():
-            conflicts.append("Employee code already exists")
-
-        # 🔁 MERGE CANDIDATE (ONLY IF CONFLICT EXISTS)
-        if draft.esic_number:
-            merge_candidate = Employee.objects.filter(
-                esic_number=draft.esic_number
-            ).first()
-
-        if not merge_candidate and draft.uan_number:
-            merge_candidate = Employee.objects.filter(
-                uan_number=draft.uan_number
-            ).first()
-
-        draft_data.append({
-            "draft": draft,
-            "conflicts": conflicts,
-            "can_approve": len(conflicts) == 0,
-            "merge_candidate": merge_candidate,
-        })
-
-    return render(
-        request,
-        "employees/employee_draft_approval_list.html",
-        {"draft_data": draft_data}
-    )
-
-
-from django.db import IntegrityError
-
-@login_required
-def approve_employee_draft(request, draft_id):
-    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
-
-    # 🔎 Uniqueness checks
-    conflicts = []
-
-    if draft.esic_number and Employee.objects.filter(esic_number=draft.esic_number).exists():
-        conflicts.append("ESIC number already exists")
-
-    if draft.uan_number and Employee.objects.filter(uan_number=draft.uan_number).exists():
-        conflicts.append("UAN number already exists")
-
-    if draft.document_number and Employee.objects.filter(document_number=draft.document_number).exists():
-        conflicts.append("Document number already exists")
-
-    if conflicts:
-        draft.status = "REJECTED"
-        draft.save(update_fields=["status"])
-
-        AuditLog.objects.create(
-            action="EMPLOYEE_DRAFT_REJECTED",
-            performed_by=request.user,
-            description=(
-                f"Draft {draft.emp_code} rejected due to conflicts: "
-                + ", ".join(conflicts)
-            )
-        )
-
-        messages.error(
-            request,
-            f"Draft rejected: {', '.join(conflicts)}"
-        )
-        return redirect("employees:employee_draft_approval_list")
-
-    # ✅ Safe to create employee
-    try:
-        employee = Employee.objects.create(
-            company=draft.company,
-            emp_code=draft.emp_code,
-            name=draft.name,
-            father_name=draft.father_name,
-            uan_number=draft.uan_number,
-            esic_number=draft.esic_number,
-            document_number=draft.document_number,
-            default_salary=draft.default_salary,
-            joining_date=draft.joining_date,
-            approved_by=request.user,
-        )
-    except IntegrityError:
-        messages.error(
-            request,
-            "Approval failed due to a uniqueness conflict."
-        )
-        return redirect("employees:employee_draft_approval_list")
-
-    draft.status = "APPROVED"
-    draft.save(update_fields=["status"])
-
-    AuditLog.objects.create(
-        action="EMPLOYEE_APPROVED",
-        performed_by=request.user,
-        description=f"Employee {employee.emp_code} approved from draft"
-    )
-
-    messages.success(request, f"Employee {employee.emp_code} approved successfully")
-    return redirect("employees:employee_draft_approval_list")
-
-
-
-@login_required
-def reject_employee_draft(request, draft_id):
-    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
-
-    draft.status = "REJECTED"
-    draft.save(update_fields=["status"])
-
-    AuditLog.objects.create(
-        action="EMPLOYEE_REJECTED",
-        performed_by=request.user,
-        description=f"Employee draft {draft.emp_code} rejected"
-    )
-
-    messages.error(request, f"Employee draft {draft.emp_code} rejected")
-    return redirect("employees:employee_draft_approval_list")
-
 
 
 @login_required
@@ -418,15 +276,9 @@ def upload_employee_drafts(request):
         df = pd.read_excel(file)
 
         required_columns = {
-            "site_code",
-            "emp_code",
-            "name",
-            "father_name",
-            "uan_number",
-            "esic_number",
-            "document_number",
-            "default_salary",
-            "joining_date",
+            "site_code", "emp_code", "name", "father_name",
+            "uan_number", "esic_number", "document_number",
+            "default_salary", "joining_date",
         }
 
         if not required_columns.issubset(df.columns):
@@ -443,11 +295,23 @@ def upload_employee_drafts(request):
         error_rows = []
         warning_rows = []
 
+        # ✅ Defined once, outside the loop
+        def to_nullable(val):
+            if pd.isna(val):
+                return None
+            val = str(val).strip()
+            if val in ("", "0", "0.0", "None", "nan", "-", "—"):
+                return None
+            return val
+
         with transaction.atomic():
             for index, row in df.iterrows():
 
                 emp_code = str(row.get("emp_code", "")).strip()
                 site_code = row.get("site_code")
+                esic = to_nullable(row.get("esic_number"))
+                uan = to_nullable(row.get("uan_number"))
+                doc = to_nullable(row.get("document_number"))
 
                 def skip(reason):
                     error_rows.append({
@@ -461,7 +325,6 @@ def upload_employee_drafts(request):
                     skip("Employee code missing")
                     continue
 
-                # 🔹 Validate site_code
                 try:
                     company = Company.objects.get(
                         site_code=int(site_code),
@@ -472,10 +335,10 @@ def upload_employee_drafts(request):
                     skip("Invalid site_code")
                     continue
 
-                # Normalize identifiers
-                esic = str(row.get("esic_number")).strip() if pd.notna(row.get("esic_number")) else None
-                uan = str(row.get("uan_number")).strip() if pd.notna(row.get("uan_number")) else None
-                doc = str(row.get("document_number")).strip() if pd.notna(row.get("document_number")) else None
+                # ✅ Normalize — 0, blank, None all become NULL
+                esic = to_nullable(row.get("esic_number"))
+                uan  = to_nullable(row.get("uan_number"))
+                doc  = to_nullable(row.get("document_number"))
 
                 # 🔴 HARD BLOCKS
                 if Employee.objects.filter(company=company, emp_code=emp_code).exists():
@@ -507,7 +370,6 @@ def upload_employee_drafts(request):
                     skip("Pending draft already exists")
                     continue
 
-                # Parse joining date
                 joining_date = pd.to_datetime(row.get("joining_date"), errors="coerce")
                 if pd.isna(joining_date):
                     skipped += 1
@@ -523,6 +385,7 @@ def upload_employee_drafts(request):
                 salary = row.get("default_salary")
                 if pd.isna(salary) or salary == "":
                     warnings.append("Default salary missing")
+                    salary = None
                 elif isinstance(salary, (int, float)) and salary > 200000:
                     warnings.append("Unusually high salary")
 
@@ -532,7 +395,7 @@ def upload_employee_drafts(request):
                 ).exists():
                     warnings.append("Employee with same name exists in this company")
 
-                # ✅ CREATE DRAFT
+                # ✅ CREATE DRAFT — esic/uan/doc are already None if blank/zero
                 EmployeeDraft.objects.create(
                     company=company,
                     emp_code=emp_code,
@@ -555,7 +418,6 @@ def upload_employee_drafts(request):
                         "warnings": warnings,
                     })
 
-        # Store reports
         if error_rows:
             request.session["employee_draft_upload_errors"] = error_rows
             messages.warning(request, "Some rows were skipped.")
@@ -576,6 +438,102 @@ def upload_employee_drafts(request):
         return redirect("employees:employee_draft_list")
 
     return render(request, "employees/employee_draft_upload.html")
+
+
+@login_required
+def approve_employee_draft(request, draft_id):
+    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
+
+    def to_nullable(val):
+        if not val:
+            return None
+        val = str(val).strip()
+        if val in ("", "0", "0.0", "None", "nan"):
+            return None
+        return val
+
+    esic = to_nullable(draft.esic_number)
+    uan  = to_nullable(draft.uan_number)
+    doc  = to_nullable(draft.document_number)
+
+    conflicts = []
+
+    if esic and Employee.objects.filter(esic_number=esic).exists():
+        conflicts.append("ESIC already exists")
+
+    if uan and Employee.objects.filter(uan_number=uan).exists():
+        conflicts.append("UAN already exists")
+
+    if doc and Employee.objects.filter(document_number=doc).exists():
+        conflicts.append("Document number already exists")
+
+    if Employee.objects.filter(
+        company=draft.company,
+        emp_code=draft.emp_code
+    ).exists():
+        conflicts.append("Employee code already exists")
+
+    if conflicts:
+        draft.status = "REJECTED"
+        draft.save(update_fields=["status"])
+
+        AuditLog.objects.create(
+            action="EMPLOYEE_DRAFT_REJECTED",
+            performed_by=request.user,
+            description=(
+                f"Draft {draft.emp_code} rejected due to conflicts: "
+                + ", ".join(conflicts)
+            )
+        )
+
+        messages.error(request, f"Draft rejected: {', '.join(conflicts)}")
+        return redirect("employees:employee_draft_approval_list")
+
+    try:
+        employee = Employee.objects.create(
+            company=draft.company,
+            emp_code=draft.emp_code,
+            name=draft.name,
+            father_name=draft.father_name,
+            uan_number=uan,      # ✅ cleaned value
+            esic_number=esic,    # ✅ cleaned value
+            document_number=doc, # ✅ cleaned value
+            default_salary=draft.default_salary,
+            joining_date=draft.joining_date,
+            approved_by=request.user,
+        )
+    except IntegrityError:
+        messages.error(request, "Approval failed due to a uniqueness conflict.")
+        return redirect("employees:employee_draft_approval_list")
+
+    draft.status = "APPROVED"
+    draft.save(update_fields=["status"])
+
+    AuditLog.objects.create(
+        action="EMPLOYEE_APPROVED",
+        performed_by=request.user,
+        description=f"Employee {employee.emp_code} approved from draft"
+    )
+
+    messages.success(request, f"Employee {employee.emp_code} approved successfully")
+    return redirect("employees:employee_draft_approval_list")
+
+
+@login_required
+def reject_employee_draft(request, draft_id):
+    draft = get_object_or_404(EmployeeDraft, id=draft_id, status="PENDING")
+
+    draft.status = "REJECTED"
+    draft.save(update_fields=["status"])
+
+    AuditLog.objects.create(
+        action="EMPLOYEE_REJECTED",
+        performed_by=request.user,
+        description=f"Employee draft {draft.emp_code} rejected"
+    )
+
+    messages.error(request, f"Employee draft {draft.emp_code} rejected")
+    return redirect("employees:employee_draft_approval_list")
 
 
 
@@ -788,6 +746,69 @@ def reject_employee_change(request, employee_id):
 
     return redirect("employees:employee_profile", employee.id)
 
+
+@login_required
+def employee_draft_list(request):
+    drafts = EmployeeDraft.objects.filter(status="PENDING").order_by("-created_at")
+    return render(
+        request,
+        "employees/employee_draft_list.html",
+        {"drafts": drafts}
+    )
+
+@login_required
+def employee_draft_approval_list(request):
+    drafts = EmployeeDraft.objects.filter(status="PENDING").select_related("company")
+
+    draft_data = []
+
+    for draft in drafts:
+        conflicts = []
+        merge_candidate = None
+
+        esic = draft.esic_number or None
+        uan  = draft.uan_number or None
+        doc  = draft.document_number or None
+
+        # Only check if value actually exists — never check None against None
+        if esic and Employee.objects.filter(esic_number=esic).exists():
+            conflicts.append("ESIC already exists")
+
+        if uan and Employee.objects.filter(uan_number=uan).exists():
+            conflicts.append("UAN already exists")
+
+        if doc and Employee.objects.filter(document_number=doc).exists():  # ← guard added
+            conflicts.append("Document number already exists")
+
+        if Employee.objects.filter(
+            company=draft.company,
+            emp_code=draft.emp_code
+        ).exists():
+            conflicts.append("Employee code already exists")
+
+        # Merge candidate
+        if esic:
+            merge_candidate = Employee.objects.filter(esic_number=esic).first()
+
+        if not merge_candidate and uan:
+            merge_candidate = Employee.objects.filter(uan_number=uan).first()
+
+        draft_data.append({
+            "draft": draft,
+            "conflicts": conflicts,
+            "can_approve": len(conflicts) == 0,
+            "merge_candidate": merge_candidate,
+        })
+
+    return render(
+        request,
+        "employees/employee_draft_approval_list.html",
+        {"draft_data": draft_data}
+    )
+
+
+
+
 @login_required
 def employee_change_approval_list(request):
     pending_changes = EmployeeChangeRequest.objects.filter(
@@ -901,3 +922,5 @@ def delete_employee(request, employee_id):
         return redirect("employees:employee_list")
 
     return redirect("employees:employee_profile", employee.id)
+
+

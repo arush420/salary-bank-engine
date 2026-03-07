@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Salary Register{% endblock %}
+{% block title %}Bank Disbursement Report{% endblock %}
 {% block content %}
 <div class="container-fluid py-3">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="fw-bold mb-0">Salary Register</h4>
-            <small class="text-muted">Month-wise salary transactions per company</small>
+            <h4 class="fw-bold mb-0">Bank Disbursement Report</h4>
+            <small class="text-muted">Salary transfer status, UTR and bank details</small>
         </div>
         <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Reports</a>
     </div>
@@ -64,30 +64,41 @@
     {% if selected_company %}
         {% if batch %}
             <div class="row g-3 mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Total Employees</div>
-                        <div class="fw-bold fs-4">{{ totals.total_count }}</div>
+                        <div class="text-muted small">Total</div>
+                        <div class="fw-bold fs-5">₹{{ totals.total|floatformat:0 }}</div>
+                        <div class="text-muted" style="font-size:0.72rem;">{{ totals.count }} employees</div>
                     </div>
                 </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Total Salary</div>
-                        <div class="fw-bold fs-4">₹{{ totals.total_salary|floatformat:0 }}</div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3 border-success">
+                        <div class="text-muted small">Completed</div>
+                        <div class="fw-bold fs-5 text-success">₹{{ totals.completed|floatformat:0 }}</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div class="text-muted small">Pending / Ready</div>
+                        <div class="fw-bold fs-5 text-primary">₹{{ totals.pending|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3 border-warning">
+                        <div class="text-muted small">On Hold</div>
+                        <div class="fw-bold fs-5 text-warning">₹{{ totals.hold|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3 border-danger">
+                        <div class="text-muted small">Failed</div>
+                        <div class="fw-bold fs-5 text-danger">₹{{ totals.failed|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
                         <div class="text-muted small">Batch Status</div>
-                        <div class="fw-bold fs-5">
-                            <span class="badge bg-secondary">{{ batch.status }}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Period</div>
-                        <div class="fw-bold fs-5">{{ month_name }} {{ year }}</div>
+                        <div class="fw-bold"><span class="badge bg-secondary">{{ batch.status }}</span></div>
                     </div>
                 </div>
             </div>
@@ -99,13 +110,13 @@
                             <tr class="text-uppercase text-muted fw-semibold">
                                 <th class="ps-4 py-3">Emp Code</th>
                                 <th class="py-3">Name</th>
-                                <th class="py-3">UAN</th>
-                                <th class="py-3">ESIC</th>
                                 <th class="py-3">Account No.</th>
                                 <th class="py-3">IFSC</th>
-                                <th class="py-3 text-end">Salary</th>
+                                <th class="py-3 text-end">Amount</th>
                                 <th class="py-3">Status</th>
                                 <th class="py-3">UTR</th>
+                                <th class="py-3">Bank Response</th>
+                                <th class="py-3">Remark</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -113,8 +124,6 @@
                             <tr>
                                 <td class="ps-4 py-2 fw-semibold small">{{ t.employee.emp_code }}</td>
                                 <td class="py-2">{{ t.employee.name }}</td>
-                                <td class="py-2 small text-muted">{{ t.employee.uan_number|default:"—" }}</td>
-                                <td class="py-2 small text-muted">{{ t.employee.esic_number|default:"—" }}</td>
                                 <td class="py-2 small">{{ t.account_number|default:"—" }}</td>
                                 <td class="py-2 small">{{ t.ifsc|default:"—" }}</td>
                                 <td class="py-2 text-end fw-medium">₹{{ t.salary_amount|floatformat:0 }}</td>
@@ -130,38 +139,33 @@
                                     {% endif %}
                                 </td>
                                 <td class="py-2 small text-muted">{{ t.utr|default:"—" }}</td>
+                                <td class="py-2 small text-muted">
+                                    {% if t.bank_response_at %}{{ t.bank_response_at|date:"d M Y H:i" }}{% else %}—{% endif %}
+                                </td>
+                                <td class="py-2 small text-muted">
+                                    {{ t.hold_reason|default:t.failure_reason|default:"—" }}
+                                </td>
                             </tr>
                             {% empty %}
                             <tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>
                             {% endfor %}
                         </tbody>
-                        {% if transactions %}
-                        <tfoot class="table-light fw-bold">
-                            <tr>
-                                <td colspan="6" class="ps-4 py-2">Total ({{ totals.total_count }} employees)</td>
-                                <td class="py-2 text-end">₹{{ totals.total_salary|floatformat:0 }}</td>
-                                <td colspan="2"></td>
-                            </tr>
-                        </tfoot>
-                        {% endif %}
                     </table>
                 </div>
             </div>
-
         {% else %}
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-5 text-muted">
-                    <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">💰</span>
-                    <h6>No salary batch found for {{ month_name }} {{ year }}</h6>
-                    <p class="small mb-0">Payroll has not been processed for this period.</p>
+                    <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">🏦</span>
+                    <h6>No batch found for {{ month_name }} {{ year }}</h6>
                 </div>
             </div>
         {% endif %}
     {% else %}
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-5 text-muted">
-                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">💰</span>
-                <p class="mb-0">Select a company and period to view the salary register.</p>
+                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">🏦</span>
+                <p class="mb-0">Select a company and period to view disbursement details.</p>
             </div>
         </div>
     {% endif %}

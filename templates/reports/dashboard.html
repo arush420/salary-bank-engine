@@ -1,50 +1,105 @@
 {% extends "base.html" %}
+{% block title %}Reports{% endblock %}
 {% block content %}
+<div class="container-fluid py-3">
 
-<div class="container mt-4">
-
-    <h2 class="mb-4">Reports Center</h2>
+    <div class="mb-4">
+        <h4 class="fw-bold mb-0">Reports Centre</h4>
+        <small class="text-muted">Generate and download reports for your organisation</small>
+    </div>
 
     <div class="row g-4">
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-4">
-                <h5>Salary Report</h5>
-                <p class="text-muted small">
-                    Download salary transactions month-wise
-                </p>
-                <a href="{% url 'reports:salary_report' %}" class="btn btn-primary">
-                    Open
-                </a>
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">💰</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">Salary Register</h6>
+                            <small class="text-muted">Month-wise salary transactions</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:salary_report' %}" class="btn btn-primary btn-sm w-100">Open Report</a>
+                </div>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-4">
-                <h5>Salary + Bank Report</h5>
-                <p class="text-muted small">
-                    Includes bank snapshot & transaction status
-                </p>
-                <a href="{% url 'reports:salary_report' %}?include_bank=1" class="btn btn-primary">
-                    Open
-                </a>
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">👥</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">Monthly Headcount</h6>
+                            <small class="text-muted">Active, joined & exited employees</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:headcount_report' %}" class="btn btn-primary btn-sm w-100">Open Report</a>
+                </div>
             </div>
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm p-4">
-                <h5>Bank Change Report</h5>
-                <p class="text-muted small">
-                    Track bank change requests
-                </p>
-                <a href="{% url 'reports:bank_change_report' %}" class="btn btn-primary">
-                    Open
-                </a>
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">📅</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">Joining & Exit Report</h6>
+                            <small class="text-muted">Filter by date range</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:joining_exit_report' %}" class="btn btn-primary btn-sm w-100">Open Report</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">🏦</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">Bank Disbursement</h6>
+                            <small class="text-muted">Salary transfer status & UTR</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:bank_disbursement_report' %}" class="btn btn-primary btn-sm w-100">Open Report</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">📊</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">PF / ESIC Report</h6>
+                            <small class="text-muted">Statutory contribution register</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:pf_esic_report' %}" class="btn btn-primary btn-sm w-100">Open Report</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center mb-3">
+                        <span class="fs-2 me-3">⚙️</span>
+                        <div>
+                            <h6 class="fw-bold mb-0">Transaction Status</h6>
+                            <small class="text-muted">Hold, unhold, mark ready</small>
+                        </div>
+                    </div>
+                    <a href="{% url 'reports:transaction_status_manager' %}" class="btn btn-outline-secondary btn-sm w-100">Open</a>
+                </div>
             </div>
         </div>
 
     </div>
-
 </div>
-
 {% endblock %}

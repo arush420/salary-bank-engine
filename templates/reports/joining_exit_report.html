@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Joining & Exit Report{% endblock %}
+{% block content %}
+<div class="container-fluid py-3">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Joining & Exit Report</h4>
+            <small class="text-muted">Filter employees by joining or exit date range</small>
+        </div>
+        <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Reports</a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body px-4 py-3">
+            <form method="get">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label fw-medium small">Company</label>
+                        <select name="company" class="form-select form-select-sm" required>
+                            <option value="">Select Company</option>
+                            {% for c in companies %}
+                                <option value="{{ c.id }}" {% if selected_company.id == c.id %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">From Date</label>
+                        <input type="date" name="from_date" class="form-control form-control-sm" value="{{ from_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">To Date</label>
+                        <input type="date" name="to_date" class="form-control form-control-sm" value="{{ to_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label fw-medium small">Report Type</label>
+                        <select name="report_type" class="form-select form-select-sm">
+                            <option value="both"    {% if report_type == "both"    %}selected{% endif %}>Joining & Exit</option>
+                            <option value="joining" {% if report_type == "joining" %}selected{% endif %}>Joining Only</option>
+                            <option value="exit"    {% if report_type == "exit"    %}selected{% endif %}>Exit Only</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">View</button>
+                        {% if selected_company %}
+                            <a href="?company={{ selected_company.id }}&from_date={{ from_date }}&to_date={{ to_date }}&report_type={{ report_type }}&export=excel"
+                               class="btn btn-success btn-sm w-100">⬇ Excel</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if selected_company %}
+
+        <!-- Joinings -->
+        {% if report_type != "exit" %}
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-bottom px-4 py-3 d-flex justify-content-between">
+                <span class="fw-semibold small text-primary">
+                    <i class="bi bi-person-plus me-1"></i> Joinings
+                    {% if joined_qs %}<span class="badge bg-primary ms-2">{{ joined_qs|length }}</span>{% endif %}
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8f9fa; font-size:0.72rem; letter-spacing:0.04em;">
+                        <tr class="text-uppercase text-muted fw-semibold">
+                            <th class="ps-4 py-3">Emp Code</th>
+                            <th class="py-3">Name</th>
+                            <th class="py-3">Father Name</th>
+                            <th class="py-3">Joining Date</th>
+                            <th class="py-3">UAN</th>
+                            <th class="py-3">ESIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in joined_qs %}
+                        <tr>
+                            <td class="ps-4 py-2 fw-semibold small">{{ e.emp_code }}</td>
+                            <td class="py-2">{{ e.name }}</td>
+                            <td class="py-2 small text-muted">{{ e.father_name|default:"—" }}</td>
+                            <td class="py-2 small text-success fw-medium">{{ e.joining_date }}</td>
+                            <td class="py-2 small text-muted">{{ e.uan_number|default:"—" }}</td>
+                            <td class="py-2 small text-muted">{{ e.esic_number|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="6" class="text-center text-muted py-3">No joinings in this period.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Exits -->
+        {% if report_type != "joining" %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom px-4 py-3 d-flex justify-content-between">
+                <span class="fw-semibold small text-danger">
+                    <i class="bi bi-person-dash me-1"></i> Exits
+                    {% if exited_qs %}<span class="badge bg-danger ms-2">{{ exited_qs|length }}</span>{% endif %}
+                </span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8f9fa; font-size:0.72rem; letter-spacing:0.04em;">
+                        <tr class="text-uppercase text-muted fw-semibold">
+                            <th class="ps-4 py-3">Emp Code</th>
+                            <th class="py-3">Name</th>
+                            <th class="py-3">Father Name</th>
+                            <th class="py-3">Joining Date</th>
+                            <th class="py-3">Exit Date</th>
+                            <th class="py-3">UAN</th>
+                            <th class="py-3">ESIC</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in exited_qs %}
+                        <tr>
+                            <td class="ps-4 py-2 fw-semibold small">{{ e.emp_code }}</td>
+                            <td class="py-2">{{ e.name }}</td>
+                            <td class="py-2 small text-muted">{{ e.father_name|default:"—" }}</td>
+                            <td class="py-2 small text-muted">{{ e.joining_date }}</td>
+                            <td class="py-2 small text-danger fw-medium">{{ e.exit_date }}</td>
+                            <td class="py-2 small text-muted">{{ e.uan_number|default:"—" }}</td>
+                            <td class="py-2 small text-muted">{{ e.esic_number|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-center text-muted py-3">No exits in this period.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+    {% else %}
+        <div class="card border-0 shadow-sm">
+            <div class="card-body text-center py-5 text-muted">
+                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">📅</span>
+                <p class="mb-0">Select a company and date range to view the report.</p>
+            </div>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

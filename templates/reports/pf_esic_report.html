@@ -1,12 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Salary Register{% endblock %}
+{% block title %}PF / ESIC Report{% endblock %}
 {% block content %}
 <div class="container-fluid py-3">
 
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
-            <h4 class="fw-bold mb-0">Salary Register</h4>
-            <small class="text-muted">Month-wise salary transactions per company</small>
+            <h4 class="fw-bold mb-0">PF / ESIC Contribution Report</h4>
+            <small class="text-muted">Statutory deduction register — Employee & Employer contributions</small>
         </div>
         <a href="{% url 'reports:dashboard' %}" class="btn btn-outline-secondary btn-sm">← Reports</a>
     </div>
@@ -62,32 +62,49 @@
     </div>
 
     {% if selected_company %}
-        {% if batch %}
+        {% if transactions %}
+
+            <div class="alert alert-light border small mb-4">
+                <i class="bi bi-info-circle me-1"></i>
+                PF Rate: <strong>12% Employee + 12% Employer</strong> &nbsp;|&nbsp;
+                ESIC Rate: <strong>0.75% Employee + 3.25% Employer</strong>
+            </div>
+
             <div class="row g-3 mb-4">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Total Employees</div>
-                        <div class="fw-bold fs-4">{{ totals.total_count }}</div>
+                        <div class="text-muted small">Employees</div>
+                        <div class="fw-bold fs-4">{{ totals.count }}</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
                         <div class="text-muted small">Total Salary</div>
-                        <div class="fw-bold fs-4">₹{{ totals.total_salary|floatformat:0 }}</div>
+                        <div class="fw-bold fs-5">₹{{ totals.total_salary|floatformat:0 }}</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Batch Status</div>
-                        <div class="fw-bold fs-5">
-                            <span class="badge bg-secondary">{{ batch.status }}</span>
-                        </div>
+                        <div class="text-muted small">Employee PF</div>
+                        <div class="fw-bold fs-5 text-primary">₹{{ totals.employee_pf|floatformat:0 }}</div>
                     </div>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <div class="card border-0 shadow-sm text-center p-3">
-                        <div class="text-muted small">Period</div>
-                        <div class="fw-bold fs-5">{{ month_name }} {{ year }}</div>
+                        <div class="text-muted small">Employer PF</div>
+                        <div class="fw-bold fs-5 text-primary">₹{{ totals.employer_pf|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div class="text-muted small">Employee ESIC</div>
+                        <div class="fw-bold fs-5 text-success">₹{{ totals.employee_esic|floatformat:0 }}</div>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="card border-0 shadow-sm text-center p-3">
+                        <div class="text-muted small">Employer ESIC</div>
+                        <div class="fw-bold fs-5 text-success">₹{{ totals.employer_esic|floatformat:0 }}</div>
                     </div>
                 </div>
             </div>
@@ -100,12 +117,14 @@
                                 <th class="ps-4 py-3">Emp Code</th>
                                 <th class="py-3">Name</th>
                                 <th class="py-3">UAN</th>
-                                <th class="py-3">ESIC</th>
-                                <th class="py-3">Account No.</th>
-                                <th class="py-3">IFSC</th>
-                                <th class="py-3 text-end">Salary</th>
-                                <th class="py-3">Status</th>
-                                <th class="py-3">UTR</th>
+                                <th class="py-3">ESIC No.</th>
+                                <th class="py-3 text-end">Gross Salary</th>
+                                <th class="py-3 text-end">Emp PF</th>
+                                <th class="py-3 text-end">Er PF</th>
+                                <th class="py-3 text-end">Total PF</th>
+                                <th class="py-3 text-end">Emp ESIC</th>
+                                <th class="py-3 text-end">Er ESIC</th>
+                                <th class="py-3 text-end">Total ESIC</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -115,53 +134,53 @@
                                 <td class="py-2">{{ t.employee.name }}</td>
                                 <td class="py-2 small text-muted">{{ t.employee.uan_number|default:"—" }}</td>
                                 <td class="py-2 small text-muted">{{ t.employee.esic_number|default:"—" }}</td>
-                                <td class="py-2 small">{{ t.account_number|default:"—" }}</td>
-                                <td class="py-2 small">{{ t.ifsc|default:"—" }}</td>
-                                <td class="py-2 text-end fw-medium">₹{{ t.salary_amount|floatformat:0 }}</td>
-                                <td class="py-2">
-                                    {% if t.status == "COMPLETED" %}
-                                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:0.7rem;">{{ t.status }}</span>
-                                    {% elif t.status == "HOLD" %}
-                                        <span class="badge bg-warning-subtle text-warning border border-warning-subtle" style="font-size:0.7rem;">{{ t.status }}</span>
-                                    {% elif t.status == "FAILED" %}
-                                        <span class="badge bg-danger-subtle text-danger border border-danger-subtle" style="font-size:0.7rem;">{{ t.status }}</span>
-                                    {% else %}
-                                        <span class="badge bg-light text-secondary border" style="font-size:0.7rem;">{{ t.status }}</span>
-                                    {% endif %}
-                                </td>
-                                <td class="py-2 small text-muted">{{ t.utr|default:"—" }}</td>
+                                <td class="py-2 text-end">₹{{ t.salary_amount|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-primary small">₹{{ t.employee_pf|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-primary small">₹{{ t.employer_pf|floatformat:0 }}</td>
+                                <td class="py-2 text-end fw-medium small">₹{{ t.total_pf|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-success small">₹{{ t.employee_esic|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-success small">₹{{ t.employer_esic|floatformat:0 }}</td>
+                                <td class="py-2 text-end fw-medium small">₹{{ t.total_esic|floatformat:0 }}</td>
                             </tr>
                             {% empty %}
-                            <tr><td colspan="9" class="text-center text-muted py-4">No transactions found.</td></tr>
+                            <tr><td colspan="11" class="text-center text-muted py-4">No transactions found.</td></tr>
                             {% endfor %}
                         </tbody>
-                        {% if transactions %}
                         <tfoot class="table-light fw-bold">
                             <tr>
-                                <td colspan="6" class="ps-4 py-2">Total ({{ totals.total_count }} employees)</td>
+                                <td colspan="4" class="ps-4 py-2">TOTAL ({{ totals.count }} employees)</td>
                                 <td class="py-2 text-end">₹{{ totals.total_salary|floatformat:0 }}</td>
-                                <td colspan="2"></td>
+                                <td class="py-2 text-end text-primary">₹{{ totals.employee_pf|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-primary">₹{{ totals.employer_pf|floatformat:0 }}</td>
+                                <td class="py-2 text-end"></td>
+                                <td class="py-2 text-end text-success">₹{{ totals.employee_esic|floatformat:0 }}</td>
+                                <td class="py-2 text-end text-success">₹{{ totals.employer_esic|floatformat:0 }}</td>
+                                <td class="py-2 text-end"></td>
                             </tr>
                         </tfoot>
-                        {% endif %}
                     </table>
                 </div>
             </div>
 
+            <p class="text-muted small mt-2">
+                * PF/ESIC calculations are based on gross salary. Actual deductions may vary based on salary ceiling limits.
+                Download Excel for full breakdown.
+            </p>
+
         {% else %}
             <div class="card border-0 shadow-sm">
                 <div class="card-body text-center py-5 text-muted">
-                    <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">💰</span>
-                    <h6>No salary batch found for {{ month_name }} {{ year }}</h6>
-                    <p class="small mb-0">Payroll has not been processed for this period.</p>
+                    <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">📊</span>
+                    <h6>No completed transactions for {{ month_name }} {{ year }}</h6>
+                    <p class="small mb-0">Only COMPLETED, PROCESSED, EXPORTED and READY transactions are included.</p>
                 </div>
             </div>
         {% endif %}
     {% else %}
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center py-5 text-muted">
-                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">💰</span>
-                <p class="mb-0">Select a company and period to view the salary register.</p>
+                <span class="d-block mb-2" style="font-size:2.5rem; opacity:0.2;">📊</span>
+                <p class="mb-0">Select a company and period to view PF/ESIC contributions.</p>
             </div>
         </div>
     {% endif %}
