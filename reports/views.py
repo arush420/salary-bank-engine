@@ -19,10 +19,15 @@ MONTH_NAMES = {
     7:"July",8:"August",9:"September",10:"October",11:"November",12:"December",
 }
 
+# ──────────────────────────────────────────────────────────────────────────────
+# HELPER FUNCTIONS
+# ──────────────────────────────────────────────────────────────────────────────
 def get_org(request):
+    """Return organisation of logged-in user."""
     return request.user.organisation_user.organisation
 
 def excel_response(filename):
+    """Create an Excel file download response."""
     r = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     r["Content-Disposition"] = f'attachment; filename="{filename}"'
     return r
@@ -37,29 +42,39 @@ def reports_dashboard(request):
 def salary_report(request):
     today = date.today()
     org   = get_org(request)
+
     month      = int(request.GET.get("month", today.month))
     year       = int(request.GET.get("year",  today.year))
     company_id = request.GET.get("company")
     export     = request.GET.get("export")
+
     companies        = Company.objects.filter(organisation=org)
+
     selected_company = None
     transactions     = SalaryTransaction.objects.none()
     batch            = None
     totals           = {}
+
     if company_id:
         selected_company = get_object_or_404(Company, id=company_id, organisation=org)
         batch = SalaryBatch.objects.filter(company=selected_company, month=month, year=year).first()
+
         if batch:
             transactions = batch.transactions.select_related("employee","employee__company").order_by("employee__emp_code")
             totals = transactions.aggregate(total_salary=Sum("salary_amount"), total_count=Count("id"))
+
     if export == "excel" and selected_company and transactions.exists():
-        rows = [{"Site Code":selected_company.site_code,"Company":selected_company.name,
-            "Emp Code":t.employee.emp_code,"Employee Name":t.employee.name,
-            "Father Name":t.employee.father_name,"UAN":t.employee.uan_number or "",
-            "ESIC":t.employee.esic_number or "","Salary":t.salary_amount,
-            "Account Number":t.account_number or "","IFSC":t.ifsc or "",
-            "Status":t.status,"UTR":t.utr or "","Hold Reason":t.hold_reason or "",
-        } for t in transactions]
+
+        rows = [{"Site Code":selected_company.site_code,
+                 "Company":selected_company.name,
+                 "Emp Code":t.employee.emp_code,"Employee Name":t.employee.name,
+                 "Father Name":t.employee.father_name,"UAN":t.employee.uan_number or "",
+                 "ESIC":t.employee.esic_number or "","Salary":t.salary_amount,
+                 "Account Number":t.account_number or "","IFSC":t.ifsc or "",
+                 "Status":t.status,"UTR":t.utr or "","Hold Reason":t.hold_reason or "",
+        }
+                for t in transactions
+                ]
         df = pd.DataFrame(rows)
         summary = df.groupby("Status")["Salary"].agg(Count="count",Total="sum").reset_index()
         summary.loc[len(summary)] = {"Status":"GRAND TOTAL","Count":summary["Count"].sum(),"Total":summary["Total"].sum()}

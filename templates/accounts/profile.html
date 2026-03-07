@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+<div class="row">
+
+<!-- LEFT SIDEBAR -->
+<div class="col-lg-3">
+
+<div class="card shadow-sm mb-3">
+<div class="card-body text-center">
+
+<i class="bi bi-person-circle"
+   style="font-size:80px;color:#6c757d;"></i>
+
+<h5 class="mt-2 mb-1">
+{{ request.user.get_full_name|default:request.user.username }}
+</h5>
+
+<p class="text-muted small mb-2">
+{{ request.user.email }}
+</p>
+
+<span class="badge bg-primary">
+{{ request.user.groups.first.name|default:"User" }}
+</span>
+
+</div>
+</div>
+
+
+<div class="list-group shadow-sm">
+
+<a href="#profile"
+   class="list-group-item list-group-item-action active"
+   data-bs-toggle="tab">
+Profile
+</a>
+
+<a href="#security"
+   class="list-group-item list-group-item-action"
+   data-bs-toggle="tab">
+Security
+</a>
+
+<a href="#activity"
+   class="list-group-item list-group-item-action"
+   data-bs-toggle="tab">
+Activity Log
+</a>
+
+<a href="#sessions"
+   class="list-group-item list-group-item-action"
+   data-bs-toggle="tab">
+Active Sessions
+</a>
+
+</div>
+
+</div>
+
+
+<!-- RIGHT CONTENT -->
+<div class="col-lg-9">
+
+<div class="tab-content">
+
+<!-- PROFILE TAB -->
+<div class="tab-pane fade show active" id="profile">
+
+<div class="card shadow-sm mb-4">
+<div class="card-header">
+<strong>Edit Personal Information</strong>
+</div>
+
+<div class="card-body">
+
+<form method="post">
+{% csrf_token %}
+
+<div class="row g-3">
+
+<div class="col-md-6">
+<label class="form-label">Full Name</label>
+{{ form.full_name }}
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Email</label>
+{{ form.email }}
+</div>
+
+<div class="col-md-6">
+<label class="form-label">Phone</label>
+{{ form.phone }}
+</div>
+
+</div>
+
+<div class="mt-4">
+<button class="btn btn-primary">
+Update Profile
+</button>
+</div>
+
+</form>
+
+</div>
+</div>
+
+</div>
+
+
+<!-- SECURITY TAB -->
+<div class="tab-pane fade" id="security">
+
+<div class="card shadow-sm mb-4">
+<div class="card-header">
+<strong>Password</strong>
+</div>
+
+<div class="card-body">
+
+<a href="{% url 'password_change' %}"
+   class="btn btn-outline-warning">
+Change Password
+</a>
+
+</div>
+</div>
+
+
+<div class="card shadow-sm">
+<div class="card-header">
+<strong>Last Login</strong>
+</div>
+
+<div class="card-body">
+
+<p class="mb-2">
+<strong>Last Login:</strong>
+{{ request.user.last_login|date:"d M Y H:i" }}
+</p>
+
+<p class="mb-0">
+<strong>Account Created:</strong>
+{{ request.user.date_joined|date:"d M Y" }}
+</p>
+
+</div>
+</div>
+
+</div>
+
+
+<!-- ACTIVITY LOG -->
+<div class="tab-pane fade" id="activity">
+
+<div class="card shadow-sm">
+
+<div class="card-header">
+<strong>Recent Activity</strong>
+</div>
+
+<div class="card-body">
+
+{% if activities %}
+
+<table class="table table-sm table-hover">
+
+<thead>
+<tr>
+<th>Action</th>
+<th>Date</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for log in activities %}
+<tr>
+<td>{{ log.action }}</td>
+<td>{{ log.created_at|date:"d M Y H:i" }}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+{% else %}
+
+<p class="text-muted mb-0">
+No activity recorded.
+</p>
+
+{% endif %}
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- ACTIVE SESSIONS -->
+<div class="tab-pane fade" id="sessions">
+
+<div class="card shadow-sm">
+
+<div class="card-header">
+<strong>Active Sessions</strong>
+</div>
+
+<div class="card-body">
+
+<table class="table table-sm">
+
+<thead>
+<tr>
+<th>Device</th>
+<th>IP Address</th>
+<th>Last Active</th>
+</tr>
+</thead>
+
+<tbody>
+
+{% for s in sessions %}
+<tr>
+<td>{{ s.device }}</td>
+<td>{{ s.ip }}</td>
+<td>{{ s.last_seen }}</td>
+</tr>
+{% endfor %}
+
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+{% endblock %}
