@@ -1,3 +1,4 @@
+import uuid
 from django.contrib.auth.models import User
 from django.db import models, transaction
 from django.db.models import Max
@@ -28,7 +29,18 @@ class OrganisationUser(models.Model):
         on_delete=models.CASCADE,
         related_name="users"
     )
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    role  = models.CharField(max_length=20, choices=ROLE_CHOICES)
+    phone = models.CharField(max_length=20, blank=True, default="")
+
+    # Appearance
+    THEME_CHOICES = (("light", "Light"), ("dark", "Dark"))
+    theme = models.CharField(max_length=10, choices=THEME_CHOICES, default="light")
+
+    # Notification preferences (stored as simple booleans)
+    notify_payroll_complete  = models.BooleanField(default=True)
+    notify_salary_hold       = models.BooleanField(default=True)
+    notify_salary_failed     = models.BooleanField(default=False)
+    notify_approval_request  = models.BooleanField(default=True)
 
     def __str__(self):
         return f"{self.user.username} → {self.organisation.name} ({self.role})"
@@ -111,3 +123,32 @@ class CompanyUser(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.company}"
+
+
+class UserInvite(models.Model):
+    STATUS_CHOICES = (
+        ("PENDING",  "Pending"),
+        ("ACCEPTED", "Accepted"),
+        ("EXPIRED",  "Expired"),
+    )
+    ROLE_CHOICES = OrganisationUser.ROLE_CHOICES
+
+    organisation = models.ForeignKey(
+        Organisation,
+        on_delete=models.CASCADE,
+        related_name="invites"
+    )
+    email = models.EmailField()
+    role  = models.CharField(max_length=20, choices=ROLE_CHOICES, default="SUPERVISOR")
+    token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="PENDING")
+    invited_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="sent_invites"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("organisation", "email")
+
+    def __str__(self):
+        return f"Invite → {self.email} ({self.status})"

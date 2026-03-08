@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Accept Invite{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="min-height:70vh;">
+    <div class="card border-0 shadow-sm p-5" style="width:100%;max-width:440px;">
+
+        <div class="text-center mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center mb-3"
+                 style="width:56px;height:56px;border-radius:50%;background:rgba(37,99,235,.1);">
+                <i class="bi bi-envelope-open text-primary" style="font-size:1.4rem;"></i>
+            </div>
+            <h5 class="fw-bold mb-1">You're Invited!</h5>
+            <p class="text-muted small">
+                Join <strong>{{ invite.organisation.name }}</strong> as
+                <strong>{{ invite.get_role_display }}</strong>
+            </p>
+            <p class="text-muted small">Signing up for: <strong>{{ invite.email }}</strong></p>
+        </div>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label class="form-label fw-medium small">Choose a Username</label>
+                <input type="text" name="username" class="form-control form-control-sm"
+                       required autofocus placeholder="e.g. john_doe">
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-medium small">Password</label>
+                <input type="password" name="password1" id="pw1"
+                       class="form-control form-control-sm"
+                       required minlength="8" oninput="checkPw()">
+            </div>
+            <div class="mb-4">
+                <label class="form-label fw-medium small">Confirm Password</label>
+                <input type="password" name="password2" id="pw2"
+                       class="form-control form-control-sm"
+                       required minlength="8" oninput="checkPw()">
+                <div id="pw-msg" class="form-text" style="display:none;"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="bi bi-check2-circle me-1"></i> Create Account & Join
+            </button>
+        </form>
+
+    </div>
+</div>
+<script>
+function checkPw() {
+    const p1  = document.getElementById("pw1").value;
+    const p2  = document.getElementById("pw2").value;
+    const msg = document.getElementById("pw-msg");
+    if (!p2) { msg.style.display = "none"; return; }
+    msg.style.display = "block";
+    if (p1 === p2) { msg.textContent = "✓ Passwords match"; msg.style.color = "#10b981"; }
+    else           { msg.textContent = "✗ Passwords do not match"; msg.style.color = "#ef4444"; }
+}
+</script>
+{% endblock %}

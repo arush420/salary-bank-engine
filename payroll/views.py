@@ -243,7 +243,7 @@ def salary_batch_detail(request, batch_id):
     )
 
 
-@login_required
+@perm_required("can_upload_payroll")
 def finalize_batch(request, batch_id):
     batch = get_object_or_404(SalaryBatch, id=batch_id)
 
